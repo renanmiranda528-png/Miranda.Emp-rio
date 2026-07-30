@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login | Central Miranda</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body class="login-page">
+  <main class="login-box card">
+    <p class="eyebrow">MIRANDA</p>
+    <h1>Central Administrativa</h1>
+    <p class="muted">Acesso exclusivo para usuários autorizados.</p>
+
+    <div id="setup-alert" class="notice hidden"></div>
+
+    <form id="login-form" class="form-grid">
+      <label>E-mail<input id="email" type="email" autocomplete="username" required></label>
+      <label>Senha<input id="senha" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-primary">Entrar</button>
+      <p id="erro" class="error"></p>
+    </form>
+  </main>
+
+  <script type="module">
+    import("../js/admin/login.js").catch((erro) => {
+      console.error("Erro ao carregar o login:", erro);
+      const box = document.querySelector("#setup-alert");
+      box.classList.remove("hidden");
+      box.textContent = `Erro ao carregar o Firebase: ${erro?.message || erro}`;
+      document.querySelector("#login-form button").disabled = true;
+    });
+  </script>
+</body>
+</html>
