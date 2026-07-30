@@ -31,6 +31,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ["administrador", "caixa", "atendimento"];
     }
 
+    function sameActiveTableSession(orderData) {
+      return logged()
+        && exists(/databases/$(database)/documents/contas_ativas/$(orderData.mesaToken))
+        && get(/databases/$(database)/documents/contas_ativas/$(orderData.mesaToken)).data.sessaoId == orderData.sessaoId;
+    }
+
     match /configuracoes/{documentId} {
       allow get: if documentId == "publico" || staff();
       allow list: if staff();
@@ -102,10 +108,26 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.mesaNumero == request.resource.data.mesaNumero
         && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.responsavel == request.resource.data.responsavelConta;
 
-      allow read: if staff()
-        || (logged() && resource.data.clienteUid == request.auth.uid);
+      // Qualquer celular ligado à sessão ativa da mesa pode ver todos os pedidos dessa conta.
+      allow read: if staff() || sameActiveTableSession(resource.data);
 
-      allow update: if serviceStaff();
+      // Funcionários gerenciam normalmente. O cliente só pode marcar como entregue,
+      // sem alterar valores, itens, mesa ou qualquer outro campo.
+      allow update: if serviceStaff()
+        || (
+          logged()
+          && !staff()
+          && sameActiveTableSession(resource.data)
+          && resource.data.status in ["novo", "aceito", "preparo", "pronto"]
+          && request.resource.data.status == "entregue"
+          && request.resource.data.entreguePorClienteUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status",
+            "entregueEm",
+            "entreguePorClienteUid",
+            "atualizadoEm"
+          ])
+        );
       allow delete: if admin();
     }
 

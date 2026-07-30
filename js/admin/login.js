@@ -1,5 +1,5 @@
-import { auth, db, firebaseConfigurado } from "../shared/firebase.js?v=5";
-import { toast, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=5";
+import { auth, db, firebaseConfigurado } from "../shared/firebase.js?v=6";
+import { toast, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=6";
 import {
   signInWithEmailAndPassword,
   signOut,

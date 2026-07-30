@@ -1,6 +1,6 @@
-import { auth, db, firebaseConfigurado } from "../shared/firebase-client.js?v=5";
-import { dinheiro, gerarId, limparTexto, escapar, dataHora, debounce } from "../shared/utils.js?v=5";
-import { toast, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=5";
+import { auth, db, firebaseConfigurado } from "../shared/firebase-client.js?v=6";
+import { dinheiro, gerarId, limparTexto, escapar, dataHora, debounce } from "../shared/utils.js?v=6";
+import { toast, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=6";
 import {
   signInAnonymously,
   onAuthStateChanged
@@ -11,6 +11,8 @@ import {
   setDoc,
   collection,
   getDocs,
+  updateDoc,
+  onSnapshot,
   query,
   where,
   orderBy,
@@ -36,6 +38,7 @@ let configPublica = {};
 let catalogoVersao = 0;
 let categoriaAtual = "";
 const carrinho = new Map();
+let unsubscribeTableOrders = null;
 
 const setupAlert = $("#setup-alert");
 if (!firebaseConfigurado) {
@@ -369,9 +372,16 @@ $("#abrir-carrinho").addEventListener("click", () => {
   atualizarCarrinho();
   $("#modal-carrinho").classList.remove("hidden");
 });
-document.querySelectorAll("[data-fechar]").forEach((button) => button.addEventListener("click", () => button.closest(".modal-backdrop").classList.add("hidden")));
+function closeClientModal(backdrop) {
+  backdrop.classList.add("hidden");
+  if (backdrop.id === "modal-pedidos" && unsubscribeTableOrders) {
+    unsubscribeTableOrders();
+    unsubscribeTableOrders = null;
+  }
+}
+document.querySelectorAll("[data-fechar]").forEach((button) => button.addEventListener("click", () => closeClientModal(button.closest(".modal-backdrop"))));
 document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.addEventListener("click", (event) => {
-  if (event.target === backdrop) backdrop.classList.add("hidden");
+  if (event.target === backdrop) closeClientModal(backdrop);
 }));
 
 $("#enviar-pedido").addEventListener("click", async () => {
@@ -445,31 +455,74 @@ $("#enviar-pedido").addEventListener("click", async () => {
   }
 });
 
-const statusOrder = ["novo", "aceito", "preparo", "pronto", "entregue"];
-const statusLabels = { novo: "Enviado", aceito: "Aceito", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue", cancelado: "Cancelado" };
+const clientStatusLabels = {
+  novo: "Enviado",
+  aceito: "Enviado",
+  preparo: "Enviado",
+  pronto: "Enviado",
+  entregue: "Entregue",
+  cancelado: "Cancelado"
+};
 
-$("#meus-pedidos").addEventListener("click", async () => {
-  $("#modal-pedidos").classList.remove("hidden");
+function renderTableOrders(orders) {
   const list = $("#lista-meus-pedidos");
-  list.innerHTML = `<div class="empty-state"><div class="spinner"></div><strong>Carregando seus pedidos</strong></div>`;
+  const activeOrders = orders.filter((order) => order.status !== "cancelado");
+  const total = activeOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
 
-  try {
-    const snap = await getDocs(query(collection(db, "pedidos"), where("clienteUid", "==", usuario.uid), limit(30)));
-    const orders = snap.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => (b.criadoEm?.toMillis?.() || 0) - (a.criadoEm?.toMillis?.() || 0));
-
-    list.innerHTML = orders.length ? orders.map((order) => {
+  list.innerHTML = orders.length ? `<div class="table-orders-summary card-soft">
+      <div><small>Conta de ${escapar(conta.responsavel)}</small><strong>Mesa ${String(mesa.numero).padStart(2, "0")}</strong></div>
+      <div><small>Total atual</small><strong>${dinheiro(total)}</strong></div>
+    </div>${orders.map((order) => {
       const date = dataHora(order.criadoEm);
-      const currentIndex = Math.max(0, statusOrder.indexOf(order.status));
-      return `<article class="status-card">
-        <div class="row-between"><strong>Mesa ${String(order.mesaNumero).padStart(2, "0")}</strong><span class="badge ${order.status === "cancelado" ? "badge-danger" : "badge-warning"}">${escapar(statusLabels[order.status] || order.status)}</span></div>
+      const delivered = order.status === "entregue";
+      const canceled = order.status === "cancelado";
+      return `<article class="status-card ${canceled ? "is-cancelled" : ""}">
+        <div class="row-between"><strong>Pedido por ${escapar(order.solicitadoPor)}</strong><span class="badge ${canceled ? "badge-danger" : delivered ? "badge-success" : "badge-warning"}">${escapar(clientStatusLabels[order.status] || "Enviado")}</span></div>
         <small class="muted">${date.data} às ${date.hora}</small>
         <p>${order.itens.map((item) => `${item.quantidade}x ${escapar(item.nome)}`).join("<br>")}</p>
-        <div class="row-between"><strong>${dinheiro(order.total)}</strong><small class="muted">Pedido por ${escapar(order.solicitadoPor)}</small></div>
-        ${order.status !== "cancelado" ? `<div class="status-progress" title="Andamento do pedido">${statusOrder.map((_, index) => `<i class="${index <= currentIndex ? "active" : ""}"></i>`).join("")}</div>` : ""}
+        <div class="row-between"><strong>${dinheiro(order.total)}</strong>${!delivered && !canceled ? `<button class="btn btn-success btn-sm" data-client-deliver="${order.id}" type="button">Marcar entregue</button>` : ""}</div>
       </article>`;
-    }).join("") : `<div class="empty-state"><strong>Nenhum pedido neste celular</strong><span>Os pedidos enviados aparecerão aqui.</span></div>`;
-  } catch (error) {
+    }).join("")}` : `<div class="empty-state"><strong>Nenhum pedido nesta mesa</strong><span>Todos os pedidos da conta atual aparecerão aqui, independentemente do celular usado.</span></div>`;
+}
+
+$("#meus-pedidos").addEventListener("click", () => {
+  $("#modal-pedidos").classList.remove("hidden");
+  const list = $("#lista-meus-pedidos");
+  list.innerHTML = `<div class="empty-state"><div class="spinner"></div><strong>Carregando os pedidos da mesa</strong></div>`;
+  if (unsubscribeTableOrders) unsubscribeTableOrders();
+
+  const tableOrdersQuery = query(
+    collection(db, "pedidos"),
+    where("mesaToken", "==", mesaToken),
+    where("sessaoId", "==", conta.sessaoId),
+    limit(100)
+  );
+
+  unsubscribeTableOrders = onSnapshot(tableOrdersQuery, (snapshot) => {
+    const orders = snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => (b.criadoEm?.toMillis?.() || 0) - (a.criadoEm?.toMillis?.() || 0));
+    renderTableOrders(orders);
+  }, (error) => {
     console.error(error);
-    list.innerHTML = `<div class="notice error">Não foi possível carregar seus pedidos.<br><small>${escapar(formatFirebaseError(error))}</small></div>`;
+    list.innerHTML = `<div class="notice error">Não foi possível carregar os pedidos desta mesa.<br><small>${escapar(formatFirebaseError(error))}</small></div>`;
+  });
+});
+
+$("#lista-meus-pedidos").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-client-deliver]");
+  if (!button) return;
+  setButtonLoading(button, true, "Salvando");
+  try {
+    await updateDoc(doc(db, "pedidos", button.dataset.clientDeliver), {
+      status: "entregue",
+      entregueEm: serverTimestamp(),
+      entreguePorClienteUid: usuario.uid,
+      atualizadoEm: serverTimestamp()
+    });
+    toast("Pedido marcado como entregue.", "success");
+  } catch (error) {
+    toast(formatFirebaseError(error), "error");
+    setButtonLoading(button, false);
   }
 });

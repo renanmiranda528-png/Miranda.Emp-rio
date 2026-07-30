@@ -1,6 +1,6 @@
-import { auth, db } from "../shared/firebase.js?v=5";
-import { dinheiro, dataHora, escapar, limparTexto, gerarId, debounce } from "../shared/utils.js?v=5";
-import { toast, confirmar, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=5";
+import { auth, db } from "../shared/firebase.js?v=6";
+import { dinheiro, dataHora, escapar, limparTexto, gerarId, debounce } from "../shared/utils.js?v=6";
+import { toast, confirmar, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=6";
 import {
   onAuthStateChanged,
   signOut
@@ -20,7 +20,8 @@ import {
   serverTimestamp,
   writeBatch,
   limit,
-  increment
+  increment,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -42,6 +43,7 @@ const pageTitles = {
   historico: "Histórico",
   qrcodes: "Mesas e QR Codes",
   usuarios: "Usuários",
+  relatorio: "Relatórios",
   configuracoes: "Configurações"
 };
 
@@ -79,7 +81,7 @@ function applyPermissions() {
     document.querySelectorAll('[data-tab="usuarios"], [data-tab="configuracoes"]').forEach((item) => item.remove());
   }
   if (profile.perfil === "atendimento") {
-    document.querySelectorAll('[data-tab="historico"], [data-tab="cardapio"], [data-tab="qrcodes"]').forEach((item) => item.remove());
+    document.querySelectorAll('[data-tab="historico"], [data-tab="relatorio"], [data-tab="cardapio"], [data-tab="qrcodes"]').forEach((item) => item.remove());
   }
 }
 
@@ -134,7 +136,7 @@ async function openTab(tab) {
   $("#titulo-pagina").textContent = pageTitles[tab] || "Central";
   renderLoading();
   try {
-    await ({ pedidos, mesas, cardapio, historico, qrcodes, usuarios, configuracoes })[tab]();
+    await ({ pedidos, mesas, cardapio, historico, relatorio, qrcodes, usuarios, configuracoes })[tab]();
   } catch (error) {
     console.error(`Erro na aba ${tab}:`, error);
     renderError(`Não foi possível carregar ${pageTitles[tab] || "esta área"}`, formatFirebaseError(error));
@@ -167,36 +169,53 @@ document.addEventListener("keydown", (event) => {
 });
 
 /* PEDIDOS */
+const pendingOrderStatuses = ["novo", "aceito", "preparo", "pronto"];
+const orderStatusLabels = {
+  novo: "Enviado",
+  aceito: "Enviado",
+  preparo: "Enviado",
+  pronto: "Enviado",
+  entregue: "Entregue",
+  cancelado: "Cancelado"
+};
+
 async function pedidos() {
   content.innerHTML = `<div class="page-enter">
-    <section class="stats">
-      <article class="stat card"><span>Pedidos novos</span><strong id="s-novo">0</strong><small>Aguardando aceite</small></article>
-      <article class="stat card"><span>Em preparo</span><strong id="s-preparo">0</strong><small>Na cozinha ou balcão</small></article>
-      <article class="stat card"><span>Prontos</span><strong id="s-pronto">0</strong><small>Aguardando entrega</small></article>
+    <section class="stats stats-three">
+      <article class="stat card"><span>Aguardando entrega</span><strong id="s-pendentes">0</strong><small>Pedidos enviados pela mesa</small></article>
       <article class="stat card"><span>Mesas abertas</span><strong id="s-mesas">0</strong><small>Contas em andamento</small></article>
+      <article class="stat card"><span>Impressão automática</span><strong class="stat-word">Preparada</strong><small>Será ativada pelo Agente Miranda</small></article>
     </section>
-    <section class="board">
-      ${["novo", "aceito", "preparo", "pronto"].map((status) => `<div class="column card"><div class="column-header"><h3>${{ novo: "Novos", aceito: "Aceitos", preparo: "Em preparo", pronto: "Prontos" }[status]}</h3><span id="count-${status}" class="column-count">0</span></div><div id="col-${status}" class="order-list"><div class="empty-state"><div class="spinner"></div></div></div></div>`).join("")}
+    <section class="single-order-board card">
+      <div class="column-header">
+        <div><p class="eyebrow">Fila atual</p><h2>Pedidos enviados</h2></div>
+        <span id="count-pendentes" class="column-count">0</span>
+      </div>
+      <p class="muted flow-help">O pedido entra nesta fila imediatamente. Não precisa aceitar nem mudar para preparo. Marcar como entregue é opcional para o fechamento da conta.</p>
+      <div id="col-pendentes" class="order-list order-grid"><div class="empty-state"><div class="spinner"></div></div></div>
     </section>
   </div>`;
 
-  const orderQuery = query(collection(db, "pedidos"), where("status", "in", ["novo", "aceito", "preparo", "pronto"]), limit(100));
+  const orderQuery = query(
+    collection(db, "pedidos"),
+    where("status", "in", pendingOrderStatuses),
+    limit(100)
+  );
+
   const ordersUnsubscribe = onSnapshot(orderQuery, (snapshot) => {
-    const orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => (a.criadoEm?.toMillis?.() || 0) - (b.criadoEm?.toMillis?.() || 0));
-    ["novo", "aceito", "preparo", "pronto"].forEach((status) => {
-      const filtered = orders.filter((order) => order.status === status);
-      $(`#count-${status}`).textContent = filtered.length;
-      $(`#col-${status}`).innerHTML = filtered.length ? filtered.map(orderCard).join("") : `<div class="empty-state"><strong>Nenhum pedido</strong><span>Os pedidos desta etapa aparecerão aqui.</span></div>`;
-    });
-    $("#s-novo").textContent = orders.filter((order) => order.status === "novo").length;
-    $("#s-preparo").textContent = orders.filter((order) => order.status === "preparo").length;
-    $("#s-pronto").textContent = orders.filter((order) => order.status === "pronto").length;
+    const orders = snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => (a.criadoEm?.toMillis?.() || 0) - (b.criadoEm?.toMillis?.() || 0));
+
+    $("#count-pendentes").textContent = orders.length;
+    $("#s-pendentes").textContent = orders.length;
+    $("#col-pendentes").innerHTML = orders.length
+      ? orders.map(orderCard).join("")
+      : `<div class="empty-state"><strong>Nenhum pedido aguardando entrega</strong><span>Novos pedidos aparecerão aqui automaticamente.</span></div>`;
   }, (error) => {
     console.error(error);
     toast(formatFirebaseError(error), "error", "Pedidos indisponíveis");
-    ["novo", "aceito", "preparo", "pronto"].forEach((status) => {
-      $(`#col-${status}`).innerHTML = `<div class="notice error">Não foi possível carregar os pedidos.</div>`;
-    });
+    $("#col-pendentes").innerHTML = `<div class="notice error">Não foi possível carregar os pedidos.</div>`;
   });
 
   const accountsUnsubscribe = onSnapshot(collection(db, "contas_ativas"), (snapshot) => {
@@ -212,55 +231,72 @@ async function pedidos() {
 
 function orderCard(order) {
   const date = dataHora(order.criadoEm);
-  const next = {
-    novo: ["Aceitar", "aceito"],
-    aceito: ["Iniciar preparo", "preparo"],
-    preparo: ["Marcar como pronto", "pronto"],
-    pronto: ["Marcar entregue", "entregue"]
-  }[order.status];
-  return `<article class="order-card ${order.status === "novo" ? "new" : ""}">
-    <div class="row-between"><strong>Mesa ${String(order.mesaNumero).padStart(2, "0")}</strong><span class="badge">${date.hora}</span></div>
+  const printLabel = order.statusImpressao === "impresso" ? "Impresso" : "Aguardando agente";
+  return `<article class="order-card new">
+    <div class="row-between"><strong>Mesa ${String(order.mesaNumero).padStart(2, "0")}</strong><span class="badge badge-warning">${date.hora}</span></div>
     <div class="order-meta">${date.data} · Conta de ${escapar(order.responsavelConta)}</div>
     <p class="order-person"><strong>Pedido por ${escapar(order.solicitadoPor)}</strong></p>
     <div class="order-items">${order.itens.map((item) => `<div class="row-between"><span>${item.quantidade}x ${escapar(item.nome)}</span><span>${dinheiro(item.subtotal)}</span></div>`).join("")}</div>
     ${order.observacao ? `<div class="order-note"><strong>Observação:</strong> ${escapar(order.observacao)}</div>` : ""}
-    <strong class="order-total">${dinheiro(order.total)}</strong>
+    <div class="row-between order-card-footer"><strong class="order-total">${dinheiro(order.total)}</strong><span class="print-state">${escapar(printLabel)}</span></div>
     <div class="actions">
-      <button class="btn btn-primary btn-sm" data-status="${order.id}|${next[1]}" type="button">${next[0]}</button>
-      <button class="btn btn-secondary btn-sm" data-print="${order.id}" type="button">Imprimir</button>
-      ${order.status === "novo" ? `<button class="btn btn-ghost btn-sm" data-reject="${order.id}" type="button">Recusar</button>` : ""}
+      <button class="btn btn-success btn-sm" data-deliver="${order.id}" type="button">Marcar entregue</button>
+      <button class="btn btn-secondary btn-sm" data-print="${order.id}" type="button">Imprimir agora</button>
+      <button class="btn btn-ghost btn-sm" data-cancel-order="${order.id}" type="button">Cancelar pedido</button>
     </div>
   </article>`;
 }
 
-async function handleOrderAction(event) {
-  const statusButton = event.target.closest("[data-status]");
-  const printButton = event.target.closest("[data-print]");
-  const rejectButton = event.target.closest("[data-reject]");
+async function cancelOrder(id, button, refresh = null) {
+  const confirmed = await confirmar({
+    titulo: "Cancelar pedido",
+    mensagem: "O pedido será retirado do total da conta. Quando o agente de impressão estiver instalado, ele também poderá imprimir o aviso de cancelamento.",
+    confirmarTexto: "Cancelar pedido",
+    perigo: true
+  });
+  if (!confirmed) return;
+  setButtonLoading(button, true, "Cancelando");
+  try {
+    await updateDoc(doc(db, "pedidos", id), {
+      status: "cancelado",
+      canceladoEm: serverTimestamp(),
+      canceladoPor: user.uid,
+      statusImpressaoCancelamento: "pendente",
+      atualizadoEm: serverTimestamp(),
+      atualizadoPor: user.uid
+    });
+    toast("Pedido cancelado e retirado da conta.", "warning");
+    if (refresh) await refresh();
+  } catch (error) {
+    toast(formatFirebaseError(error), "error");
+    setButtonLoading(button, false);
+  }
+}
 
-  if (statusButton) {
-    const [id, status] = statusButton.dataset.status.split("|");
-    setButtonLoading(statusButton, true);
+async function handleOrderAction(event) {
+  const deliverButton = event.target.closest("[data-deliver]");
+  const printButton = event.target.closest("[data-print]");
+  const cancelButton = event.target.closest("[data-cancel-order]");
+
+  if (deliverButton) {
+    setButtonLoading(deliverButton, true, "Salvando");
     try {
-      await updateDoc(doc(db, "pedidos", id), { status, atualizadoEm: serverTimestamp(), atualizadoPor: user.uid });
-      toast("Status do pedido atualizado.", "success");
+      await updateDoc(doc(db, "pedidos", deliverButton.dataset.deliver), {
+        status: "entregue",
+        entregueEm: serverTimestamp(),
+        entreguePor: user.uid,
+        atualizadoEm: serverTimestamp(),
+        atualizadoPor: user.uid
+      });
+      toast("Pedido marcado como entregue.", "success");
     } catch (error) {
       toast(formatFirebaseError(error), "error");
-      setButtonLoading(statusButton, false);
+      setButtonLoading(deliverButton, false);
     }
   }
 
-  if (rejectButton) {
-    const confirmed = await confirmar({ titulo: "Recusar pedido", mensagem: "O cliente verá este pedido como cancelado. Deseja continuar?", confirmarTexto: "Recusar", perigo: true });
-    if (!confirmed) return;
-    setButtonLoading(rejectButton, true);
-    try {
-      await updateDoc(doc(db, "pedidos", rejectButton.dataset.reject), { status: "cancelado", atualizadoEm: serverTimestamp(), atualizadoPor: user.uid });
-      toast("Pedido recusado.", "warning");
-    } catch (error) {
-      toast(formatFirebaseError(error), "error");
-      setButtonLoading(rejectButton, false);
-    }
+  if (cancelButton) {
+    await cancelOrder(cancelButton.dataset.cancelOrder, cancelButton);
   }
 
   if (printButton) {
@@ -328,15 +364,35 @@ async function openAccount(token) {
     }
     const account = accountSnap.data();
     const ordersSnap = await getDocs(query(collection(db, "pedidos"), where("sessaoId", "==", account.sessaoId)));
-    const orders = ordersSnap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((order) => order.status !== "cancelado").sort((a, b) => (a.criadoEm?.toMillis?.() || 0) - (b.criadoEm?.toMillis?.() || 0));
-    const total = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+    const allOrders = ordersSnap.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => (a.criadoEm?.toMillis?.() || 0) - (b.criadoEm?.toMillis?.() || 0));
+    const billableOrders = allOrders.filter((order) => order.status !== "cancelado");
+    const total = billableOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
     const date = dataHora(account.abertaEm);
 
-    openModal(`<div class="account-detail-head"><div><p class="eyebrow">Mesa ${String(account.mesaNumero).padStart(2, "0")}</p><h2>Conta de ${escapar(account.responsavel)}</h2><p class="muted">Aberta em ${date.data} às ${date.hora}</p></div><div class="account-total"><small>Total atual</small><strong>${dinheiro(total)}</strong></div></div>
-      <div class="status-list">${orders.length ? orders.map((order) => `<article class="status-card"><div class="row-between"><strong>${escapar(order.solicitadoPor)}</strong><span class="badge">${escapar(order.status)}</span></div><small class="muted">${dataHora(order.criadoEm).data} às ${dataHora(order.criadoEm).hora}</small><p>${order.itens.map((item) => `${item.quantidade}x ${escapar(item.nome)}`).join("<br>")}</p><strong>${dinheiro(order.total)}</strong></article>`).join("") : `<div class="empty-state"><strong>Nenhum pedido nesta conta</strong></div>`}</div>
-      <div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Fechar</button>${profile.perfil !== "atendimento" ? `<button id="receive-account" class="btn btn-success" type="button" ${orders.length ? "" : "disabled"}>Receber e fechar conta</button>` : ""}</div>`);
+    const renderOrder = (order) => {
+      const canceled = order.status === "cancelado";
+      const delivered = order.status === "entregue";
+      return `<article class="status-card ${canceled ? "is-cancelled" : ""}">
+        <div class="row-between"><strong>${escapar(order.solicitadoPor)}</strong><span class="badge ${canceled ? "badge-danger" : delivered ? "badge-success" : "badge-warning"}">${escapar(orderStatusLabels[order.status] || order.status)}</span></div>
+        <small class="muted">${dataHora(order.criadoEm).data} às ${dataHora(order.criadoEm).hora}</small>
+        <p>${order.itens.map((item) => `${item.quantidade}x ${escapar(item.nome)}`).join("<br>")}</p>
+        <div class="row-between"><strong>${dinheiro(order.total)}</strong>${!canceled ? `<button class="btn btn-ghost btn-sm" data-account-cancel="${order.id}" type="button">Cancelar</button>` : ""}</div>
+      </article>`;
+    };
 
-    $("#receive-account")?.addEventListener("click", () => paymentModal(token, account, orders, total));
+    openModal(`<div class="account-detail-head"><div><p class="eyebrow">Mesa ${String(account.mesaNumero).padStart(2, "0")}</p><h2>Conta de ${escapar(account.responsavel)}</h2><p class="muted">Aberta em ${date.data} às ${date.hora}</p></div><div class="account-total"><small>Total atual</small><strong>${dinheiro(total)}</strong></div></div>
+      <div class="notice compact">A conta pode ser paga mesmo que algum pedido ainda esteja como “Enviado”. Marcar como entregue é opcional.</div>
+      <div class="status-list">${allOrders.length ? allOrders.map(renderOrder).join("") : `<div class="empty-state"><strong>Nenhum pedido nesta conta</strong></div>`}</div>
+      <div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Fechar</button>${profile.perfil !== "atendimento" ? `<button id="receive-account" class="btn btn-success" type="button" ${billableOrders.length ? "" : "disabled"}>Receber e fechar conta</button>` : ""}</div>`);
+
+    modalBody.onclick = async (event) => {
+      const cancelButton = event.target.closest("[data-account-cancel]");
+      if (!cancelButton) return;
+      await cancelOrder(cancelButton.dataset.accountCancel, cancelButton, () => openAccount(token));
+    };
+    $("#receive-account")?.addEventListener("click", () => paymentModal(token, account, billableOrders, total));
   } catch (error) {
     openModal(`<div class="notice error">${escapar(formatFirebaseError(error))}</div><div class="modal-actions"><button data-close class="btn btn-secondary">Fechar</button></div>`);
   }
@@ -675,6 +731,189 @@ async function historico() {
 function historyDetails(account) {
   const date = dataHora(account.fechadaEm);
   openModal(`<div class="row-between"><div><p class="eyebrow">Conta paga</p><h2>Mesa ${String(account.mesaNumero).padStart(2, "0")} · ${escapar(account.responsavel)}</h2></div><button data-close class="btn btn-secondary btn-icon">×</button></div><p class="muted">Fechada em ${date.data} às ${date.hora}</p><div class="status-list">${(account.pedidos || []).map((order) => `<article class="status-card"><strong>${escapar(order.solicitadoPor)}</strong><p>${order.itens.map((item) => `${item.quantidade}x ${escapar(item.nome)}`).join("<br>")}</p><strong>${dinheiro(order.total)}</strong></article>`).join("")}</div><div class="row-between cart-total"><strong>Total pago</strong><strong style="color:var(--gold)">${dinheiro(account.total)}</strong></div><p class="muted">${(account.pagamentos || []).map((item) => `${escapar(item.forma)}: ${dinheiro(item.valor)}`).join(" · ") || escapar(account.formaPagamento || "")}</p><div class="modal-actions"><button data-close class="btn btn-secondary">Fechar</button></div>`);
+}
+
+
+/* RELATÓRIOS */
+let reportState = { periodo: "mes", visualizacao: "grafico", contas: [], inicio: null, fim: null };
+
+function reportPeriod(period) {
+  const now = new Date();
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+  let start;
+  if (period === "semana") {
+    start = new Date(now);
+    const day = start.getDay() || 7;
+    start.setDate(start.getDate() - day + 1);
+    start.setHours(0, 0, 0, 0);
+  } else {
+    start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  }
+  return { start, end };
+}
+
+function aggregateReport(accounts) {
+  const result = {
+    faturamento: 0,
+    contas: accounts.length,
+    pedidos: 0,
+    produtos: new Map(),
+    dias: new Map()
+  };
+
+  accounts.forEach((account) => {
+    result.faturamento += Number(account.total || 0);
+    const closed = account.fechadaEm?.toDate?.() || new Date();
+    const dayKey = closed.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    result.dias.set(dayKey, (result.dias.get(dayKey) || 0) + Number(account.total || 0));
+
+    (account.pedidos || []).filter((order) => order.status !== "cancelado").forEach((order) => {
+      result.pedidos += 1;
+      (order.itens || []).forEach((item) => {
+        const key = item.produtoId || item.nome;
+        const current = result.produtos.get(key) || { nome: item.nome, quantidade: 0, valor: 0 };
+        current.quantidade += Number(item.quantidade || 0);
+        current.valor += Number(item.subtotal || 0);
+        result.produtos.set(key, current);
+      });
+    });
+  });
+
+  result.ticketMedio = result.contas ? result.faturamento / result.contas : 0;
+  result.produtosOrdenados = [...result.produtos.values()].sort((a, b) => b.quantidade - a.quantidade || b.valor - a.valor);
+  result.diasOrdenados = [...result.dias.entries()].map(([nome, valor]) => ({ nome, valor }));
+  return result;
+}
+
+async function relatorio() {
+  content.innerHTML = `<div class="page-enter">
+    <div class="section-toolbar">
+      <div><p class="eyebrow">Resultados do sistema</p><h2>Relatórios</h2></div>
+      <div class="section-toolbar-right report-controls">
+        <select id="report-period" aria-label="Período"><option value="semana">Semana atual</option><option value="mes" selected>Mês atual</option></select>
+        <div class="view-switch"><button class="tab-button active" data-report-view="grafico" type="button">Gráfico</button><button class="tab-button" data-report-view="texto" type="button">Texto</button></div>
+        <button id="download-report" class="btn btn-primary" type="button" disabled>Gerar relatório TXT</button>
+      </div>
+    </div>
+    <div id="report-content"><div class="empty-state"><div class="spinner"></div><strong>Calculando o relatório</strong></div></div>
+  </div>`;
+
+  $("#report-period").value = reportState.periodo;
+  content.querySelectorAll("[data-report-view]").forEach((button) => button.classList.toggle("active", button.dataset.reportView === reportState.visualizacao));
+
+  $("#report-period").addEventListener("change", async (event) => {
+    reportState.periodo = event.target.value;
+    await loadReportData();
+  });
+  content.querySelectorAll("[data-report-view]").forEach((button) => button.addEventListener("click", () => {
+    reportState.visualizacao = button.dataset.reportView;
+    content.querySelectorAll("[data-report-view]").forEach((item) => item.classList.toggle("active", item === button));
+    renderReport();
+  }));
+  $("#download-report").addEventListener("click", downloadReportTxt);
+  await loadReportData();
+}
+
+async function loadReportData() {
+  const target = $("#report-content");
+  target.innerHTML = `<div class="empty-state"><div class="spinner"></div><strong>Calculando o relatório</strong><span>Buscando apenas as contas pagas deste período.</span></div>`;
+  $("#download-report").disabled = true;
+  const { start, end } = reportPeriod(reportState.periodo);
+  reportState.inicio = start;
+  reportState.fim = end;
+
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, "historico_contas"),
+      where("fechadaEm", ">=", Timestamp.fromDate(start)),
+      where("fechadaEm", "<=", Timestamp.fromDate(end)),
+      orderBy("fechadaEm", "asc"),
+      limit(500)
+    ));
+    reportState.contas = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    renderReport();
+    $("#download-report").disabled = false;
+  } catch (error) {
+    target.innerHTML = `<div class="notice error"><strong>Não foi possível gerar o relatório.</strong><br>${escapar(formatFirebaseError(error))}</div>`;
+  }
+}
+
+function reportSummaryCards(data) {
+  return `<section class="stats">
+    <article class="stat card"><span>Valor recebido</span><strong>${dinheiro(data.faturamento)}</strong><small>Somente contas pagas</small></article>
+    <article class="stat card"><span>Contas fechadas</span><strong>${data.contas}</strong><small>No período escolhido</small></article>
+    <article class="stat card"><span>Pedidos realizados</span><strong>${data.pedidos}</strong><small>Cancelados não entram</small></article>
+    <article class="stat card"><span>Ticket médio</span><strong>${dinheiro(data.ticketMedio)}</strong><small>Valor médio por conta</small></article>
+  </section>`;
+}
+
+function barRows(items, valueKey, formatter) {
+  const max = Math.max(1, ...items.map((item) => Number(item[valueKey] || 0)));
+  return items.length ? items.map((item, index) => `<div class="report-bar-row">
+    <div class="report-rank">${String(index + 1).padStart(2, "0")}</div>
+    <div class="report-bar-copy"><div class="row-between"><strong>${escapar(item.nome)}</strong><span>${formatter(item)}</span></div><div class="report-track"><i style="width:${Math.max(4, Number(item[valueKey] || 0) / max * 100)}%"></i></div></div>
+  </div>`).join("") : `<div class="empty-state"><strong>Sem movimentação no período</strong></div>`;
+}
+
+function renderReport() {
+  const data = aggregateReport(reportState.contas);
+  const dateLabel = `${reportState.inicio.toLocaleDateString("pt-BR")} a ${reportState.fim.toLocaleDateString("pt-BR")}`;
+  const target = $("#report-content");
+
+  if (reportState.visualizacao === "texto") {
+    target.innerHTML = `${reportSummaryCards(data)}<section class="report-text card">
+      <div class="row-between"><div><p class="eyebrow">Resumo em texto</p><h3>${reportState.periodo === "semana" ? "Semana atual" : "Mês atual"}</h3></div><span class="badge">${dateLabel}</span></div>
+      <p><strong>Valor recebido:</strong> ${dinheiro(data.faturamento)}</p>
+      <p><strong>Contas fechadas:</strong> ${data.contas}</p>
+      <p><strong>Pedidos realizados:</strong> ${data.pedidos}</p>
+      <p><strong>Ticket médio:</strong> ${dinheiro(data.ticketMedio)}</p>
+      <hr><h4>Produtos mais pedidos</h4>
+      <ol class="report-product-list">${data.produtosOrdenados.slice(0, 15).map((item) => `<li><span>${escapar(item.nome)}</span><strong>${item.quantidade} un. · ${dinheiro(item.valor)}</strong></li>`).join("") || `<li>Nenhum produto vendido.</li>`}</ol>
+    </section>`;
+    return;
+  }
+
+  target.innerHTML = `${reportSummaryCards(data)}<section class="report-grid">
+    <article class="report-panel card"><div class="report-panel-head"><div><p class="eyebrow">Faturamento</p><h3>Valor por dia</h3></div><span class="badge">${dateLabel}</span></div>${barRows(data.diasOrdenados, "valor", (item) => dinheiro(item.valor))}</article>
+    <article class="report-panel card"><div class="report-panel-head"><div><p class="eyebrow">Produtos</p><h3>Mais pedidos</h3></div><span class="badge">Top 10</span></div>${barRows(data.produtosOrdenados.slice(0, 10), "quantidade", (item) => `${item.quantidade} un.`)}</article>
+  </section>`;
+}
+
+function downloadReportTxt() {
+  const data = aggregateReport(reportState.contas);
+  const title = reportState.periodo === "semana" ? "SEMANA ATUAL" : "MÊS ATUAL";
+  const lines = [
+    "MIRANDA EMPÓRIO DE BEBIDAS",
+    `RELATÓRIO — ${title}`,
+    `Período: ${reportState.inicio.toLocaleDateString("pt-BR")} a ${reportState.fim.toLocaleDateString("pt-BR")}`,
+    `Gerado em: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+    "",
+    "RESUMO",
+    `Valor recebido: ${dinheiro(data.faturamento)}`,
+    `Contas fechadas: ${data.contas}`,
+    `Pedidos realizados: ${data.pedidos}`,
+    `Ticket médio: ${dinheiro(data.ticketMedio)}`,
+    "",
+    "PRODUTOS MAIS PEDIDOS"
+  ];
+  data.produtosOrdenados.forEach((item, index) => lines.push(`${index + 1}. ${item.nome} — ${item.quantidade} unidade(s) — ${dinheiro(item.valor)}`));
+  if (!data.produtosOrdenados.length) lines.push("Nenhum produto vendido no período.");
+  lines.push("", "FATURAMENTO POR DIA");
+  data.diasOrdenados.forEach((item) => lines.push(`${item.nome}: ${dinheiro(item.valor)}`));
+  if (!data.diasOrdenados.length) lines.push("Nenhuma conta paga no período.");
+  lines.push("", "Observação: pedidos cancelados não entram nos valores.");
+
+  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `relatorio-miranda-${reportState.periodo}-${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+  toast("Arquivo TXT gerado no seu dispositivo. Nada foi salvo no Firebase.", "success", "Relatório pronto");
 }
 
 /* QR CODES */

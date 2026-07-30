@@ -8,7 +8,7 @@ import {
   getFirestore
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
-import { firebaseConfig, firebaseConfigurado } from "./firebase-config.js?v=5";
+import { firebaseConfig, firebaseConfigurado } from "./firebase-config.js?v=6";
 
 if (!firebaseConfigurado) {
   throw new Error("Firebase não configurado em js/shared/firebase-config.js.");

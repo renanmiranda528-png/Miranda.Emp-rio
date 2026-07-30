@@ -1,41 +1,40 @@
-# Miranda Empório de Bebidas — V5 Design e Otimização
+# Miranda Empório de Bebidas — V6
 
-Sistema completo para GitHub Pages + Firebase, sem o agente instalável de impressão automática.
+Sistema completo do cardápio digital e da Central Administrativa.
 
-## Principais melhorias da V5
+## Fluxo de pedidos
 
-- Novo design profissional no cardápio e na Central;
-- Logo oficial da Miranda em todas as áreas;
-- Central totalmente responsiva no celular, com menu lateral móvel;
-- Animações, skeletons e indicadores de carregamento;
-- Mensagens internas por toast e confirmação em modal;
-- Nenhum `alert()` ou `confirm()` do navegador;
-- Checkbox de estoque para mostrar produto como **ESGOTADO**;
-- Produto esgotado permanece visível, com sobreposição na imagem e preço substituído por ESGOTADO;
-- Opção separada para ocultar o produto do cardápio;
-- Edição, exclusão e ativação/desativação de produtos e categorias;
-- Exclusão de categoria bloqueada enquanto houver produtos vinculados;
-- Cache inteligente do cardápio para reduzir leituras do Firestore;
-- Documento `catalogo_meta/principal` usado como controle de versão;
-- Central escuta pedidos e contas em listeners separados, evitando reler todas as contas a cada pedido;
-- Consulta de conta usa somente a sessão atual;
-- Histórico limitado a 50 contas por carregamento;
-- Impressão manual continua disponível com logo, data e horário.
+- O cliente envia o pedido e ele aparece imediatamente na Central como **Enviado**.
+- Não existem mais as etapas Aceito, Em preparo e Pronto.
+- O pedido pode ser marcado como **Entregue**, mas isso é opcional para fechar a conta.
+- O administrador pode cancelar pedidos antes do fechamento, inclusive depois de marcados como entregues.
+- Pedidos cancelados são retirados do total da conta.
+- O futuro Agente de Impressão Miranda monitorará pedidos com `statusImpressao: pendente` e imprimirá automaticamente.
 
-## Como publicar
+## Pedidos da mesa
 
-1. Extraia o ZIP.
-2. Envie **todo o conteúdo interno** para a raiz do repositório GitHub.
-3. Substitua os arquivos existentes.
-4. Publique as regras atualizadas do arquivo `firestore.rules` no Firebase Console.
-5. Aguarde o GitHub Pages concluir e use `Ctrl + F5`.
+A área que antes se chamava Meus pedidos agora mostra todos os pedidos da sessão atual da mesa. Isso funciona em qualquer celular que leia o mesmo QR Code enquanto a conta estiver aberta. Clientes também podem marcar um pedido como entregue.
 
-## Importante sobre estoque
+## Relatórios
 
-- **Disponível em estoque marcado:** produto normal e botão Adicionar.
-- **Disponível em estoque desmarcado:** produto continua visível com destaque ESGOTADO.
-- **Exibir no cardápio desmarcado:** produto fica oculto para os clientes.
+A Central possui a aba **Relatórios** com:
 
-## Otimização de leituras
+- semana atual ou mês atual;
+- faturamento recebido;
+- quantidade de contas e pedidos;
+- ticket médio;
+- produtos mais pedidos;
+- visualização em gráfico ou texto;
+- geração de arquivo TXT no dispositivo.
 
-O cardápio salva categorias, produtos e configuração pública no navegador. Durante 2 minutos, novas aberturas no mesmo navegador podem usar zero leituras de catálogo. Depois disso, o sistema consulta apenas o documento de versão; os produtos são baixados novamente somente quando houve uma alteração administrativa.
+O arquivo TXT não é salvo no Firebase.
+
+## Publicação
+
+Extraia o ZIP e envie todo o conteúdo para a raiz do repositório GitHub Pages, substituindo os arquivos antigos.
+
+Depois publique também o arquivo `firestore.rules` em:
+
+`Firebase Console → Firestore Database → Regras`
+
+Sem as regras V6, celulares diferentes da mesma mesa não conseguirão ver e atualizar os pedidos compartilhados.

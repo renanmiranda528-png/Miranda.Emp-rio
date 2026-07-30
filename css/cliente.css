@@ -207,3 +207,17 @@
   .sold-out-overlay span { padding: 7px 10px; font-size: .75rem; }
   .cart-fab { left: 12px; right: 12px; width: calc(100% - 24px); }
 }
+
+
+/* V6 — pedidos compartilhados pela mesa */
+.table-orders-summary { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; padding: 14px; margin-bottom: 13px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(135deg,rgba(168,15,24,.12),rgba(255,255,255,.025)); }
+.table-orders-summary > div { display: grid; gap: 3px; }
+.table-orders-summary > div:last-child { text-align: right; }
+.table-orders-summary small { color: var(--muted); }
+.status-card.is-cancelled { opacity: .62; border-style: dashed; }
+@media (max-width: 520px) {
+  .table-orders-summary { grid-template-columns: 1fr; gap: 9px; }
+  .table-orders-summary > div:last-child { text-align: left; }
+  .status-card .row-between { align-items: flex-start; gap: 10px; }
+  .status-card .btn { width: auto; }
+}
