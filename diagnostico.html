@@ -19,7 +19,7 @@
   <script type="module">
     const resultado = document.querySelector("#resultado");
     try {
-      const { auth, db } = await import("./js/shared/firebase.js");
+      const { auth, db } = await import("./js/shared/firebase.js?v=3");
       resultado.textContent =
         "OK: módulos carregados\n" +
         "Projeto: " + db.app.options.projectId + "\n" +

@@ -24,7 +24,7 @@
   </main>
 
   <script type="module">
-    import("../js/admin/login.js").catch((erro) => {
+    import("../js/admin/login.js?v=3").catch((erro) => {
       console.error("Erro ao carregar o login:", erro);
       const box = document.querySelector("#setup-alert");
       box.classList.remove("hidden");

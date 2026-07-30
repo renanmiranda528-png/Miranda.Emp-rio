@@ -188,10 +188,70 @@ async function historico(){
   conteudo.innerHTML=`<section class="table-grid">${snap.docs.map(d=>{const c=d.data(),dh=dataHora(c.fechadaEm);return `<article class="table-row card"><div><strong>Mesa ${String(c.mesaNumero).padStart(2,"0")} · ${escapar(c.responsavel)}</strong><br><small>${dh.data} às ${dh.hora}</small></div><div>${dinheiro(c.total)}</div><div>${escapar(c.formaPagamento)}</div><button class="btn btn-secondary" data-hist="${d.id}">Detalhes</button></article>`}).join("")||"<p>Nenhuma conta fechada.</p>"}</section>`;
 }
 async function qrcodes(){
-  const snap=await getDocs(query(collection(db,"mesas"),orderBy("numero")));
-  conteudo.innerHTML=`<button id="nova-mesa" class="btn btn-primary">Nova mesa</button><section class="table-grid section">${snap.docs.map(d=>{const m={id:d.id,...d.data()},url=`${location.origin}${location.pathname.replace(/\\/admin\\/index\\.html.*$/,"/")}?mesa=${String(m.numero).padStart(2,"0")}&token=${m.id}`;return `<article class="table-row card"><div><strong>Mesa ${String(m.numero).padStart(2,"0")}</strong><br><small>${m.ativa?"QR ativo":"Desativada"}</small></div><div style="overflow:hidden;text-overflow:ellipsis">${url}</div><div><img alt="QR Mesa ${m.numero}" width="96" height="96" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}"></div><button class="btn btn-secondary" data-copy="${encodeURIComponent(url)}">Copiar link</button></article>`}).join("")}</section>`;
-  $("#nova-mesa").onclick=()=>{abrirModal(`<button data-close class="btn btn-secondary">Fechar</button><h2>Nova mesa</h2><form id="fm" class="form-grid"><label>Número<input id="mn" type="number" min="1" required></label><button class="btn btn-primary">Criar mesa e QR</button></form>`);$("#fm").onsubmit=async e=>{e.preventDefault();const token=crypto.randomUUID().replaceAll("-","").slice(0,20);await setDoc(doc(db,"mesas",token),{numero:Number($("#mn").value),ativa:true,criadaEm:serverTimestamp()});fecharModal();qrcodes()}}
-  conteudo.onclick=e=>{const b=e.target.closest("[data-copy]");if(b)navigator.clipboard.writeText(decodeURIComponent(b.dataset.copy))};
+  const snap = await getDocs(query(collection(db, "mesas"), orderBy("numero")));
+  const baseCardapio = new URL("../", window.location.href);
+
+  const cards = snap.docs.map((documento) => {
+    const mesa = { id: documento.id, ...documento.data() };
+    const destino = new URL(baseCardapio.href);
+    destino.searchParams.set("mesa", String(mesa.numero).padStart(2, "0"));
+    destino.searchParams.set("token", mesa.id);
+    const url = destino.href;
+
+    return `<article class="table-row card">
+      <div>
+        <strong>Mesa ${String(mesa.numero).padStart(2, "0")}</strong><br>
+        <small>${mesa.ativa ? "QR ativo" : "Desativada"}</small>
+      </div>
+      <div style="overflow:hidden;text-overflow:ellipsis">${escapar(url)}</div>
+      <div>
+        <img alt="QR Mesa ${mesa.numero}" width="96" height="96"
+          src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}">
+      </div>
+      <button class="btn btn-secondary" data-copy="${encodeURIComponent(url)}">Copiar link</button>
+    </article>`;
+  }).join("");
+
+  conteudo.innerHTML = `
+    <button id="nova-mesa" class="btn btn-primary">Nova mesa</button>
+    <section class="table-grid section">${cards || '<p class="muted">Nenhuma mesa cadastrada.</p>'}</section>`;
+
+  $("#nova-mesa").onclick = () => {
+    abrirModal(`<button data-close class="btn btn-secondary">Fechar</button>
+      <h2>Nova mesa</h2>
+      <form id="fm" class="form-grid">
+        <label>Número<input id="mn" type="number" min="1" required></label>
+        <button class="btn btn-primary">Criar mesa e QR</button>
+      </form>`);
+
+    $("#fm").onsubmit = async (evento) => {
+      evento.preventDefault();
+      const botao = evento.submitter;
+      botao.disabled = true;
+      try {
+        const token = crypto.randomUUID().replaceAll("-", "").slice(0, 20);
+        await setDoc(doc(db, "mesas", token), {
+          numero: Number($("#mn").value),
+          ativa: true,
+          criadaEm: serverTimestamp()
+        });
+        fecharModal();
+        await qrcodes();
+      } catch (erro) {
+        console.error(erro);
+        alert("Não foi possível criar a mesa.");
+        botao.disabled = false;
+      }
+    };
+  };
+
+  conteudo.onclick = (evento) => {
+    const botao = evento.target.closest("[data-copy]");
+    if (!botao) return;
+    navigator.clipboard.writeText(decodeURIComponent(botao.dataset.copy));
+    botao.textContent = "Link copiado";
+    setTimeout(() => { botao.textContent = "Copiar link"; }, 1400);
+  };
 }
 async function usuarios(){
   const snap=await getDocs(collection(db,"usuarios"));
