@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Diagnóstico Firebase | Miranda</title>
+  <link rel="stylesheet" href="./css/global.css">
+  <style>
+    main{width:min(760px,calc(100% - 32px));margin:40px auto;padding:24px}
+    pre{white-space:pre-wrap;background:#111;padding:16px;border-radius:12px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">MIRANDA</p>
+    <h1>Diagnóstico do Firebase</h1>
+    <pre id="resultado">Iniciando...</pre>
+  </main>
+  <script type="module">
+    const resultado = document.querySelector("#resultado");
+    try {
+      const { auth, db } = await import("./js/shared/firebase.js");
+      resultado.textContent =
+        "OK: módulos carregados\n" +
+        "Projeto: " + db.app.options.projectId + "\n" +
+        "Usuário atual: " + (auth.currentUser?.uid || "nenhum");
+    } catch (erro) {
+      console.error(erro);
+      resultado.textContent = "ERRO:\n" + (erro?.stack || erro?.message || erro);
+    }
+  </script>
+</body>
+</html>
