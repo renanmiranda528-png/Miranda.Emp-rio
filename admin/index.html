@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Central de Pedidos | Miranda</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+  <div class="admin-shell">
+    <aside class="sidebar">
+      <div>
+        <p class="eyebrow">MIRANDA</p>
+        <h2>Central</h2>
+        <small id="usuario-logado" class="muted"></small>
+      </div>
+
+      <nav>
+        <a href="#" class="active" data-tab="pedidos">Pedidos</a>
+        <a href="#" data-tab="mesas">Mesas e contas</a>
+        <a href="#" data-tab="cardapio">Cardápio</a>
+        <a href="#" data-tab="historico">Histórico</a>
+        <a href="#" data-tab="qrcodes">Mesas e QR Codes</a>
+        <a href="#" data-tab="usuarios">Usuários</a>
+        <a href="#" data-tab="configuracoes">Configurações</a>
+      </nav>
+
+      <button id="sair" class="btn btn-secondary" type="button">Sair</button>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <div>
+          <p class="eyebrow">OPERAÇÃO</p>
+          <h1 id="titulo-pagina">Pedidos</h1>
+        </div>
+        <span id="conexao" class="badge">Carregando sistema...</span>
+      </header>
+      <div id="conteudo">
+        <section class="notice">Carregando a Central Administrativa...</section>
+      </div>
+    </main>
+  </div>
+
+  <div id="modal-admin" class="modal-backdrop hidden">
+    <section class="modal card" id="modal-admin-conteudo"></section>
+  </div>
+
+  <script type="module">
+    import("../js/admin/app.js").catch((erro) => {
+      console.error("Erro ao carregar a Central:", erro);
+      const status = document.querySelector("#conexao");
+      const conteudo = document.querySelector("#conteudo");
+      if (status) status.textContent = "Erro ao carregar";
+      if (conteudo) {
+        conteudo.innerHTML = `
+          <section class="notice">
+            <strong>A Central não conseguiu carregar o JavaScript.</strong><br>
+            ${String(erro?.message || erro)}
+            <br><br>Atualize a página com Ctrl + F5. Se continuar, confira o arquivo
+            <code>js/shared/firebase-config.js</code>.
+          </section>`;
+      }
+    });
+  </script>
+</body>
+</html>

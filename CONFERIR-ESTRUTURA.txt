@@ -1,0 +1,20 @@
+Os arquivos abaixo devem ficar DIRETAMENTE na raiz do repositório:
+
+admin/
+assets/
+css/
+docs/
+js/
+index.html
+diagnostico.html
+firebase.json
+firestore.indexes.json
+firestore.rules
+.nojekyll
+
+Dentro de admin devem existir:
+admin/index.html
+admin/login.html
+
+Não envie o arquivo ZIP diretamente ao GitHub.
+Extraia o ZIP e envie TODO o conteúdo de dentro da pasta Miranda.Emp-rio.
