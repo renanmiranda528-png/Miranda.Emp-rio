@@ -1,8 +1,13 @@
 export const dinheiro = (valor = 0) =>
-  Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export const dataHora = (valor) => {
-  const data = valor?.toDate ? valor.toDate() : new Date(valor || Date.now());
+  let data;
+  if (valor?.toDate) data = valor.toDate();
+  else if (valor instanceof Date) data = valor;
+  else if (valor) data = new Date(valor);
+  else data = new Date();
+  if (Number.isNaN(data.getTime())) data = new Date();
   return {
     data: data.toLocaleDateString("pt-BR"),
     hora: data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
@@ -20,8 +25,14 @@ export const escapar = (texto = "") =>
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
   }[caractere]));
 
-export const hojeInicio = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+export const slugify = (text = "") => String(text)
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+export const debounce = (fn, wait = 250) => {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
 };

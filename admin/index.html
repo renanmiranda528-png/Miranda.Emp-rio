@@ -2,66 +2,71 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09090a">
   <title>Central de Pedidos | Miranda</title>
-  <link rel="stylesheet" href="../css/global.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="icon" href="../assets/img/logo-miranda.webp">
+  <link rel="stylesheet" href="../css/global.css?v=5">
+  <link rel="stylesheet" href="../css/admin.css?v=5">
 </head>
 <body>
   <div class="admin-shell">
-    <aside class="sidebar">
-      <div>
-        <p class="eyebrow">MIRANDA</p>
-        <h2>Central</h2>
-        <small id="usuario-logado" class="muted"></small>
+    <aside id="sidebar" class="sidebar" aria-label="Menu administrativo">
+      <div class="sidebar-brand">
+        <img class="sidebar-logo" src="../assets/img/logo-miranda.webp" alt="Logo Miranda">
+        <div><p class="eyebrow">Miranda</p><h2>Central</h2></div>
+      </div>
+
+      <div class="user-chip">
+        <strong id="usuario-logado">Carregando usuário...</strong>
+        <small id="perfil-logado">Validando acesso</small>
       </div>
 
       <nav>
-        <a href="#" class="active" data-tab="pedidos">Pedidos</a>
-        <a href="#" data-tab="mesas">Mesas e contas</a>
-        <a href="#" data-tab="cardapio">Cardápio</a>
-        <a href="#" data-tab="historico">Histórico</a>
-        <a href="#" data-tab="qrcodes">Mesas e QR Codes</a>
-        <a href="#" data-tab="usuarios">Usuários</a>
-        <a href="#" data-tab="configuracoes">Configurações</a>
+        <a href="#" class="active" data-tab="pedidos"><span class="nav-icon">▦</span>Pedidos</a>
+        <a href="#" data-tab="mesas"><span class="nav-icon">◎</span>Mesas e contas</a>
+        <a href="#" data-tab="cardapio"><span class="nav-icon">▤</span>Cardápio</a>
+        <a href="#" data-tab="historico"><span class="nav-icon">◷</span>Histórico</a>
+        <a href="#" data-tab="qrcodes"><span class="nav-icon">⌗</span>Mesas e QR Codes</a>
+        <a href="#" data-tab="usuarios"><span class="nav-icon">♙</span>Usuários</a>
+        <a href="#" data-tab="configuracoes"><span class="nav-icon">⚙</span>Configurações</a>
       </nav>
 
-      <button id="sair" class="btn btn-secondary" type="button">Sair</button>
+      <div class="sidebar-footer">
+        <button id="sair" class="btn btn-secondary" type="button">Sair da conta</button>
+      </div>
     </aside>
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
     <main class="admin-main">
-      <header class="admin-header">
-        <div>
-          <p class="eyebrow">OPERAÇÃO</p>
-          <h1 id="titulo-pagina">Pedidos</h1>
+      <header id="admin-header" class="admin-header">
+        <div class="admin-title-wrap">
+          <button id="menu-mobile" class="btn btn-secondary btn-icon mobile-menu-button" type="button" aria-label="Abrir menu">☰</button>
+          <div><p class="eyebrow">Operação</p><h1 id="titulo-pagina">Pedidos</h1></div>
         </div>
-        <span id="conexao" class="badge">Carregando sistema...</span>
+        <div class="header-actions">
+          <span id="conexao" class="status-pill">Conectando</span>
+        </div>
       </header>
+
       <div id="conteudo">
-        <section class="notice">Carregando a Central Administrativa...</section>
+        <section class="stats">
+          <article class="stat card skeleton"></article><article class="stat card skeleton"></article><article class="stat card skeleton"></article><article class="stat card skeleton"></article>
+        </section>
+        <section class="empty-state"><div class="spinner"></div><strong>Carregando a Central</strong><span>Validando seu acesso e buscando os pedidos.</span></section>
       </div>
     </main>
   </div>
 
-  <div id="modal-admin" class="modal-backdrop hidden">
+  <div id="modal-admin" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <section class="modal card" id="modal-admin-conteudo"></section>
   </div>
 
   <script type="module">
-    import("../js/admin/app.js?v=3").catch((erro) => {
+    import("../js/admin/app.js?v=5").catch((erro) => {
       console.error("Erro ao carregar a Central:", erro);
-      const status = document.querySelector("#conexao");
-      const conteudo = document.querySelector("#conteudo");
-      if (status) status.textContent = "Erro ao carregar";
-      if (conteudo) {
-        conteudo.innerHTML = `
-          <section class="notice">
-            <strong>A Central não conseguiu carregar o JavaScript.</strong><br>
-            ${String(erro?.message || erro)}
-            <br><br>Atualize a página com Ctrl + F5. Se continuar, confira o arquivo
-            <code>js/shared/firebase-config.js</code>.
-          </section>`;
-      }
+      document.querySelector("#conexao").textContent = "Erro ao carregar";
+      document.querySelector("#conteudo").innerHTML = `<section class="notice error"><strong>A Central não conseguiu carregar.</strong><br>${String(erro?.message || erro)}</section>`;
     });
   </script>
 </body>

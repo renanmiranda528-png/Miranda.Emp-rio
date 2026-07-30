@@ -6,91 +6,123 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    function hasStaffDocument() {
+      return logged()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
     function staff() {
-      return logged()
-        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
-        && userDoc().data.ativo == true;
+      return hasStaffDocument()
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.ativo == true;
     }
 
     function admin() {
-      return staff() && userDoc().data.perfil == "administrador";
+      return staff()
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil == "administrador";
     }
 
-    function caixa() {
-      return staff() && userDoc().data.perfil in ["administrador", "caixa"];
+    function cashier() {
+      return staff()
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ["administrador", "caixa"];
     }
 
-    function atendimento() {
-      return staff() && userDoc().data.perfil in ["administrador", "caixa", "atendimento"];
+    function serviceStaff() {
+      return staff()
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ["administrador", "caixa", "atendimento"];
     }
 
-    match /configuracoes/{docId} {
-      allow read: if docId == "publico" || staff();
-      allow write: if admin();
+    match /configuracoes/{documentId} {
+      allow get: if documentId == "publico" || staff();
+      allow list: if staff();
+      allow create, update, delete: if admin();
     }
 
-    match /categorias/{id} {
-      allow read: if true;
-      allow write: if admin();
+    match /catalogo_meta/{documentId} {
+      allow get: if true;
+      allow list: if staff();
+      allow create, update, delete: if admin();
     }
 
-    match /produtos/{id} {
-      allow read: if resource.data.ativo == true || staff();
-      allow write: if admin();
+    match /categorias/{categoryId} {
+      allow get: if resource.data.ativa == true || staff();
+      allow list: if staff() || resource.data.ativa == true;
+      allow create, update, delete: if admin();
     }
 
-    match /mesas/{token} {
-      allow read: if true;
-      allow write: if admin();
+    match /produtos/{productId} {
+      // Um produto com ativo=true pode ser lido mesmo quando disponivel=false.
+      // Assim ele continua no cardápio com o selo ESGOTADO.
+      allow get: if resource.data.ativo == true || staff();
+      allow list: if staff() || resource.data.ativo == true;
+      allow create, update, delete: if admin();
     }
 
-    match /contas_ativas/{mesaToken} {
-      allow read: if logged();
+    match /mesas/{tableToken} {
+      allow get: if true;
+      allow list: if staff();
+      allow create, update, delete: if admin();
+    }
+
+    match /contas_ativas/{tableToken} {
+      allow get: if logged();
+      allow list: if staff();
+
       allow create: if logged()
         && !staff()
-        && request.resource.data.mesaToken == mesaToken
+        && request.resource.data.mesaToken == tableToken
         && request.resource.data.status == "aberta"
+        && request.resource.data.responsavelUid == request.auth.uid
         && request.resource.data.responsavel is string
         && request.resource.data.responsavel.size() >= 2
         && request.resource.data.sessaoId is string
-        && exists(/databases/$(database)/documents/mesas/$(mesaToken))
-        && get(/databases/$(database)/documents/mesas/$(mesaToken)).data.ativa == true;
-      allow update, delete: if caixa();
+        && exists(/databases/$(database)/documents/mesas/$(tableToken))
+        && get(/databases/$(database)/documents/mesas/$(tableToken)).data.ativa == true
+        && request.resource.data.mesaNumero == get(/databases/$(database)/documents/mesas/$(tableToken)).data.numero;
+
+      allow update, delete: if cashier();
     }
 
-    match /pedidos/{pedidoId} {
+    match /pedidos/{orderId} {
       allow create: if logged()
         && !staff()
         && request.resource.data.clienteUid == request.auth.uid
         && request.resource.data.status == "novo"
+        && request.resource.data.statusImpressao == "pendente"
         && request.resource.data.mesaToken is string
         && request.resource.data.sessaoId is string
         && request.resource.data.solicitadoPor is string
         && request.resource.data.solicitadoPor.size() >= 2
         && request.resource.data.itens is list
         && request.resource.data.itens.size() > 0
+        && request.resource.data.itens.size() <= 50
+        && request.resource.data.total is number
+        && request.resource.data.total >= 0
         && exists(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken))
-        && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.sessaoId
-           == request.resource.data.sessaoId;
+        && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.sessaoId == request.resource.data.sessaoId
+        && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.mesaNumero == request.resource.data.mesaNumero
+        && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.responsavel == request.resource.data.responsavelConta;
 
-      allow read: if staff() || (logged() && resource.data.clienteUid == request.auth.uid);
-      allow update: if atendimento();
+      allow read: if staff()
+        || (logged() && resource.data.clienteUid == request.auth.uid);
+
+      allow update: if serviceStaff();
       allow delete: if admin();
     }
 
-    match /historico_contas/{id} {
+    match /historico_contas/{accountId} {
       allow read: if staff();
-      allow create: if caixa();
+      allow create: if cashier();
       allow update, delete: if admin();
     }
 
-    match /usuarios/{uid} {
-      allow read: if logged() && (request.auth.uid == uid || admin());
+    match /usuarios/{userId} {
+      allow get: if logged() && (request.auth.uid == userId || admin());
+      allow list: if admin();
       allow create, update, delete: if admin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

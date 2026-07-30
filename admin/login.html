@@ -2,33 +2,43 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09090a">
   <title>Login | Central Miranda</title>
-  <link rel="stylesheet" href="../css/global.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="icon" href="../assets/img/logo-miranda.webp">
+  <link rel="stylesheet" href="../css/global.css?v=5">
+  <link rel="stylesheet" href="../css/admin.css?v=5">
 </head>
 <body class="login-page">
-  <main class="login-box card">
-    <p class="eyebrow">MIRANDA</p>
-    <h1>Central Administrativa</h1>
-    <p class="muted">Acesso exclusivo para usuários autorizados.</p>
-
-    <div id="setup-alert" class="notice hidden"></div>
-
-    <form id="login-form" class="form-grid">
-      <label>E-mail<input id="email" type="email" autocomplete="username" required></label>
-      <label>Senha<input id="senha" type="password" autocomplete="current-password" required></label>
-      <button class="btn btn-primary">Entrar</button>
-      <p id="erro" class="error"></p>
-    </form>
+  <main class="login-layout card">
+    <section class="login-showcase">
+      <img class="login-showcase-logo" src="../assets/img/logo-miranda.webp" alt="Logo Miranda">
+      <div>
+        <p class="eyebrow">Central Miranda</p>
+        <h2>Pedidos e mesas organizados em um só lugar.</h2>
+        <p>Receba pedidos, acompanhe o preparo, gerencie o cardápio e feche as contas com segurança.</p>
+      </div>
+    </section>
+    <section class="login-box">
+      <img class="login-box-logo" src="../assets/img/logo-miranda.webp" alt="Logo Miranda Empório de Bebidas">
+      <p class="eyebrow">Acesso restrito</p>
+      <h1>Entrar na Central</h1>
+      <p class="muted">Use o e-mail e a senha cadastrados no Firebase.</p>
+      <div id="setup-alert" class="notice hidden"></div>
+      <form id="login-form" class="form-grid">
+        <label>E-mail<input id="email" type="email" autocomplete="username" placeholder="seuemail@exemplo.com" required></label>
+        <label>Senha<input id="senha" type="password" autocomplete="current-password" placeholder="Sua senha" required></label>
+        <button class="btn btn-primary" type="submit">Entrar</button>
+        <p id="erro" class="error"></p>
+      </form>
+    </section>
   </main>
-
   <script type="module">
-    import("../js/admin/login.js?v=3").catch((erro) => {
-      console.error("Erro ao carregar o login:", erro);
+    import("../js/admin/login.js?v=5").catch((erro) => {
+      console.error(erro);
       const box = document.querySelector("#setup-alert");
       box.classList.remove("hidden");
-      box.textContent = `Erro ao carregar o Firebase: ${erro?.message || erro}`;
+      box.textContent = `Erro ao carregar o sistema: ${erro?.message || erro}`;
       document.querySelector("#login-form button").disabled = true;
     });
   </script>

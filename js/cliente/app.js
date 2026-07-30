@@ -1,95 +1,140 @@
-import { auth, db, firebaseConfigurado } from "../shared/firebase.js";
-import { dinheiro, gerarId, limparTexto, escapar, dataHora } from "../shared/utils.js";
+import { auth, db, firebaseConfigurado } from "../shared/firebase-client.js?v=5";
+import { dinheiro, gerarId, limparTexto, escapar, dataHora, debounce } from "../shared/utils.js?v=5";
+import { toast, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=5";
 import {
-  signInAnonymously, onAuthStateChanged
+  signInAnonymously,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
-  doc, getDoc, setDoc, collection, getDocs, query, where, orderBy,
-  addDoc, serverTimestamp, limit
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  addDoc,
+  serverTimestamp,
+  limit
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
-const $ = (s) => document.querySelector(s);
+const $ = (selector) => document.querySelector(selector);
 const params = new URLSearchParams(location.search);
 const mesaNumeroUrl = params.get("mesa");
 const mesaToken = params.get("token");
+const CACHE_KEY = "miranda_catalogo_v5";
+const CACHE_TTL = 2 * 60 * 1000;
 
-let usuario = null, mesa = null, conta = null, clienteNome = "";
-let produtos = [], categorias = [], carrinho = new Map();
+let usuario = null;
+let mesa = null;
+let conta = null;
+let clienteNome = "";
+let produtos = [];
+let categorias = [];
+let configPublica = {};
+let catalogoVersao = 0;
+let categoriaAtual = "";
+const carrinho = new Map();
 
 const setupAlert = $("#setup-alert");
 if (!firebaseConfigurado) {
   setupAlert.classList.remove("hidden");
-  setupAlert.textContent = "Firebase ainda não configurado. Abra js/shared/firebase-config.js e insira as credenciais do projeto.";
+  setupAlert.textContent = "Firebase ainda não configurado. Confira js/shared/firebase-config.js.";
   $("#identificacao").classList.add("hidden");
+} else {
+  iniciar();
 }
 
-if (firebaseConfigurado) iniciar();
+window.addEventListener("scroll", () => {
+  $("#client-header").classList.toggle("scrolled", window.scrollY > 12);
+}, { passive: true });
 
 async function iniciar() {
-  if (!mesaToken || !mesaNumeroUrl) return falharMesa("QR Code inválido ou incompleto.");
+  if (!mesaToken || !mesaNumeroUrl) {
+    falharMesa("Abra o cardápio lendo o QR Code disponível na mesa.");
+    return;
+  }
 
   try {
     const mesaSnap = await getDoc(doc(db, "mesas", mesaToken));
-    if (!mesaSnap.exists() || !mesaSnap.data().ativa) return falharMesa("Esta mesa está desativada.");
+    if (!mesaSnap.exists() || mesaSnap.data().ativa !== true) {
+      falharMesa("Esta mesa está desativada ou o QR Code não é mais válido.");
+      return;
+    }
+
     mesa = { id: mesaSnap.id, ...mesaSnap.data() };
     if (String(mesa.numero).padStart(2, "0") !== String(mesaNumeroUrl).padStart(2, "0")) {
-      return falharMesa("Os dados do QR Code não correspondem à mesa.");
+      falharMesa("Os dados do QR Code não correspondem à mesa.");
+      return;
     }
+
     $("#mesa-badge").textContent = `Mesa ${String(mesa.numero).padStart(2, "0")}`;
+    $("#mesa-badge").classList.add("online");
 
     await signInAnonymously(auth);
-    onAuthStateChanged(auth, async (u) => {
-      if (!u) return;
-      usuario = u;
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      usuario = user;
       await carregarConta();
     });
-  } catch (e) {
-    console.error(e);
-    falharMesa("Não foi possível validar a mesa. Verifique a internet.");
+  } catch (error) {
+    console.error(error);
+    falharMesa("Não foi possível validar a mesa. Verifique sua conexão e tente novamente.");
   }
 }
 
-function falharMesa(msg) {
+function falharMesa(message) {
   $("#mesa-badge").textContent = "QR inválido";
+  $("#mesa-badge").classList.add("offline");
   $("#titulo-conta").textContent = "Não foi possível abrir o cardápio";
-  $("#texto-conta").textContent = msg;
+  $("#texto-conta").textContent = message;
+  $("#form-nome").classList.add("hidden");
 }
 
 async function carregarConta() {
-  const contaSnap = await getDoc(doc(db, "contas_ativas", mesaToken));
-  conta = contaSnap.exists() ? { id: contaSnap.id, ...contaSnap.data() } : null;
+  try {
+    const contaSnap = await getDoc(doc(db, "contas_ativas", mesaToken));
+    conta = contaSnap.exists() ? { id: contaSnap.id, ...contaSnap.data() } : null;
 
-  const chave = `miranda_${mesaToken}_${conta?.sessaoId || "nova"}`;
-  const salvo = JSON.parse(localStorage.getItem(chave) || "null");
+    const key = conta ? `miranda_cliente_${mesaToken}_${conta.sessaoId}` : null;
+    const saved = key ? JSON.parse(localStorage.getItem(key) || "null") : null;
 
-  if (conta) {
-    $("#titulo-conta").textContent = `Conta aberta em nome de ${conta.responsavel}`;
-    $("#texto-conta").textContent = salvo?.nome
-      ? `Olá, ${salvo.nome}. Seus próximos pedidos serão incluídos nesta conta.`
-      : "Informe seu nome. Seu pedido será incluído nesta conta, sem abrir outra.";
-  } else {
-    $("#titulo-conta").textContent = `Mesa ${String(mesa.numero).padStart(2, "0")} livre`;
-    $("#texto-conta").textContent = "Informe seu nome para abrir a conta desta mesa.";
-  }
+    if (conta) {
+      $("#titulo-conta").textContent = `Conta aberta em nome de ${conta.responsavel}`;
+      $("#texto-conta").textContent = saved?.nome
+        ? `Olá, ${saved.nome}. Seus próximos pedidos serão incluídos nesta mesma conta.`
+        : "Informe seu nome. Seu pedido será identificado, mas continuará dentro desta conta.";
+    } else {
+      $("#titulo-conta").textContent = `Mesa ${String(mesa.numero).padStart(2, "0")} livre`;
+      $("#texto-conta").textContent = "Informe seu nome para abrir a conta desta mesa.";
+    }
 
-  if (salvo?.nome) {
-    clienteNome = salvo.nome;
-    liberarCardapio();
-  } else {
-    $("#form-nome").classList.remove("hidden");
+    if (saved?.nome) {
+      clienteNome = saved.nome;
+      await liberarCardapio();
+    } else {
+      $("#form-nome").classList.remove("hidden");
+    }
+  } catch (error) {
+    console.error(error);
+    falharMesa("Não foi possível consultar a conta desta mesa.");
   }
 }
 
-$("#form-nome").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
+$("#form-nome").addEventListener("submit", async (event) => {
+  event.preventDefault();
   const nome = limparTexto($("#nome").value, 40);
-  if (nome.length < 2) return;
+  if (nome.length < 2) {
+    toast("Digite um nome com pelo menos 2 caracteres.", "warning");
+    return;
+  }
 
-  const botao = ev.submitter;
-  botao.disabled = true;
+  const button = event.submitter;
+  setButtonLoading(button, true, "Entrando na mesa");
   try {
     if (!conta) {
-      const nova = {
+      const novaConta = {
         mesaToken,
         mesaNumero: mesa.numero,
         responsavel: nome,
@@ -98,135 +143,333 @@ $("#form-nome").addEventListener("submit", async (ev) => {
         status: "aberta",
         abertaEm: serverTimestamp()
       };
-      await setDoc(doc(db, "contas_ativas", mesaToken), nova);
-      conta = nova;
+      try {
+        await setDoc(doc(db, "contas_ativas", mesaToken), novaConta);
+        conta = novaConta;
+      } catch (createError) {
+        // Se outra pessoa abriu a mesma mesa no mesmo instante, entra na conta recém-criada.
+        const currentAccount = await getDoc(doc(db, "contas_ativas", mesaToken));
+        if (!currentAccount.exists()) throw createError;
+        conta = { id: currentAccount.id, ...currentAccount.data() };
+      }
     }
+
     clienteNome = nome;
-    localStorage.setItem(`miranda_${mesaToken}_${conta.sessaoId}`, JSON.stringify({ nome }));
+    localStorage.setItem(`miranda_cliente_${mesaToken}_${conta.sessaoId}`, JSON.stringify({ nome }));
     $("#form-nome").classList.add("hidden");
     $("#titulo-conta").textContent = `Conta aberta em nome de ${conta.responsavel}`;
     $("#texto-conta").textContent = `Olá, ${nome}. Seus pedidos serão incluídos nesta conta.`;
     await liberarCardapio();
-  } catch (e) {
-    console.error(e);
-    $("#texto-conta").textContent = "Outra pessoa pode ter aberto a conta agora. Atualize a página.";
-  } finally { botao.disabled = false; }
+  } catch (error) {
+    console.error(error);
+    toast(formatFirebaseError(error), "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
 });
 
 async function liberarCardapio() {
   $("#area-cardapio").classList.remove("hidden");
   $("#abrir-carrinho").classList.remove("hidden");
-  await Promise.all([carregarCategorias(), carregarProdutos()]);
+  await carregarCatalogoOtimizado();
+}
+
+function readCache() {
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+  } catch {
+    localStorage.removeItem(CACHE_KEY);
+    return null;
+  }
+}
+
+async function carregarCatalogoOtimizado(force = false) {
+  const cached = readCache();
+  const now = Date.now();
+
+  if (!force && cached?.checkedAt && now - cached.checkedAt < CACHE_TTL) {
+    aplicarCatalogo(cached);
+    return;
+  }
+
+  try {
+    let version = 0;
+    let metaAvailable = true;
+    try {
+      const metaSnap = await getDoc(doc(db, "catalogo_meta", "principal"));
+      version = metaSnap.exists() ? Number(metaSnap.data().versao || 0) : 0;
+    } catch (metaError) {
+      // Compatibilidade temporária caso o código seja publicado antes das novas regras.
+      console.warn("Controle de versão do catálogo indisponível:", metaError);
+      metaAvailable = false;
+      version = Number(cached?.versao || 0);
+    }
+
+    if (metaAvailable && !force && cached && Number(cached.versao || 0) === version && cached.produtos && cached.categorias) {
+      cached.checkedAt = now;
+      localStorage.setItem(CACHE_KEY, JSON.stringify(cached));
+      aplicarCatalogo(cached);
+      return;
+    }
+
+    const [categoriesSnap, productsSnap, configSnap] = await Promise.all([
+      getDocs(query(collection(db, "categorias"), where("ativa", "==", true))),
+      getDocs(query(collection(db, "produtos"), where("ativo", "==", true))),
+      getDoc(doc(db, "configuracoes", "publico"))
+    ]);
+
+    const payload = {
+      versao: version,
+      checkedAt: now,
+      categorias: categoriesSnap.docs.map((item) => ({ id: item.id, ...item.data() })),
+      produtos: productsSnap.docs.map((item) => ({ id: item.id, ...item.data() })),
+      configuracoes: configSnap.exists() ? configSnap.data() : {}
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+    aplicarCatalogo(payload);
+  } catch (error) {
+    console.error("Erro ao carregar cardápio:", error);
+    if (cached?.produtos && cached?.categorias) {
+      aplicarCatalogo(cached);
+      toast("Exibindo o último cardápio salvo porque a conexão falhou.", "warning");
+    } else {
+      $("#catalogo-loading").classList.add("hidden");
+      $("#produtos").classList.remove("hidden");
+      $("#produtos").innerHTML = `<div class="empty-state"><strong>Não foi possível carregar o cardápio</strong><span>${escapar(formatFirebaseError(error))}</span></div>`;
+    }
+  }
+}
+
+function aplicarCatalogo(payload) {
+  catalogoVersao = Number(payload.versao || 0);
+  categorias = (payload.categorias || []).sort((a, b) => Number(a.ordem || 999) - Number(b.ordem || 999));
+  const categoriasVisiveis = new Set(categorias.map((categoria) => categoria.id));
+  produtos = (payload.produtos || [])
+    .filter((produto) => !produto.categoriaId || categoriasVisiveis.has(produto.categoriaId))
+    .sort((a, b) => Number(a.ordem || 999) - Number(b.ordem || 999) || String(a.nome).localeCompare(String(b.nome), "pt-BR"));
+  configPublica = payload.configuracoes || {};
+  if (configPublica.mensagem) $("#mensagem-hero").textContent = configPublica.mensagem;
   renderCategorias();
   renderProdutos();
-}
-
-async function carregarCategorias() {
-  const snap = await getDocs(query(collection(db, "categorias"), orderBy("ordem")));
-  categorias = snap.docs.map(d => ({ id:d.id, ...d.data() })).filter(c => c.ativa !== false);
-}
-
-async function carregarProdutos() {
-  const snap = await getDocs(query(collection(db, "produtos"), where("ativo","==",true)));
-  produtos = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  $("#catalogo-loading").classList.add("hidden");
+  $("#produtos").classList.remove("hidden");
 }
 
 function renderCategorias() {
   $("#categorias").innerHTML = [
-    `<button class="chip active" data-cat="">Todos</button>`,
-    ...categorias.map(c => `<button class="chip" data-cat="${c.id}">${escapar(c.nome)}</button>`)
+    `<button class="chip active" data-cat="" type="button">Todos</button>`,
+    ...categorias.map((category) => `<button class="chip" data-cat="${category.id}" type="button">${escapar(category.nome)}</button>`)
   ].join("");
 }
 
-function renderProdutos(filtroCat = "", busca = "") {
-  const lista = produtos.filter(p =>
-    (!filtroCat || p.categoriaId === filtroCat) &&
-    (!busca || p.nome.toLowerCase().includes(busca.toLowerCase()))
-  );
-  $("#produtos").innerHTML = lista.length ? lista.map(p => `
-    <article class="product card">
-      <div class="product-img">${p.imagemUrl ? `<img src="${escapar(p.imagemUrl)}" alt="${escapar(p.nome)}">` : "Sem imagem"}</div>
-      <div class="product-body">
-        <h3>${escapar(p.nome)}</h3>
-        <p class="muted">${escapar(p.descricao || "")}</p>
-        <p class="product-price">${dinheiro(p.preco)}</p>
-        <button class="btn btn-primary" data-add="${p.id}">Adicionar</button>
-      </div>
-    </article>`).join("") : `<p class="muted">Nenhum produto encontrado.</p>`;
+function productImage(product) {
+  if (!product.imagemUrl) {
+    return `<div class="product-placeholder"><img src="./assets/img/logo-miranda.webp" alt=""><span>Sem imagem</span></div>`;
+  }
+  return `<img loading="lazy" src="${escapar(product.imagemUrl)}" alt="${escapar(product.nome)}" data-product-image>`;
 }
 
-let catAtual = "";
-$("#categorias").addEventListener("click", e => {
-  const b = e.target.closest("[data-cat]"); if (!b) return;
-  catAtual = b.dataset.cat;
-  document.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === b));
-  renderProdutos(catAtual, $("#busca").value);
+function renderProdutos(categoryFilter = categoriaAtual, search = $("#busca").value.trim()) {
+  const normalized = search.toLocaleLowerCase("pt-BR");
+  const list = produtos.filter((product) =>
+    (!categoryFilter || product.categoriaId === categoryFilter) &&
+    (!normalized || `${product.nome} ${product.descricao || ""}`.toLocaleLowerCase("pt-BR").includes(normalized))
+  );
+
+  if (!list.length) {
+    $("#produtos").innerHTML = `<div class="empty-state" style="grid-column:1/-1"><strong>Nenhum produto encontrado</strong><span>Tente outra categoria ou termo de busca.</span></div>`;
+    return;
+  }
+
+  $("#produtos").innerHTML = list.map((product, index) => {
+    const soldOut = product.disponivel === false;
+    return `<article class="product card ${soldOut ? "sold-out" : ""}" style="animation-delay:${Math.min(index * 25, 180)}ms">
+      <div class="product-img">
+        ${productImage(product)}
+        ${soldOut ? `<div class="sold-out-overlay"><span>Esgotado</span></div>` : ""}
+      </div>
+      <div class="product-body">
+        <h3 class="product-title">${escapar(product.nome)}</h3>
+        <p class="product-description">${escapar(product.descricao || "")}</p>
+        <div class="product-footer">
+          <p class="product-price ${soldOut ? "sold" : ""}">${soldOut ? "ESGOTADO" : dinheiro(product.preco)}</p>
+          <button class="btn ${soldOut ? "btn-secondary" : "btn-primary"} btn-sm btn-add" data-add="${product.id}" type="button" ${soldOut ? "disabled" : ""}>${soldOut ? "Indisponível" : "Adicionar"}</button>
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+
+  document.querySelectorAll("[data-product-image]").forEach((image) => {
+    if (image.complete) image.classList.add("loaded");
+    else image.addEventListener("load", () => image.classList.add("loaded"), { once: true });
+    image.addEventListener("error", () => {
+      image.closest(".product-img").innerHTML = `<div class="product-placeholder"><img class="loaded" src="./assets/img/logo-miranda.webp" alt=""><span>Imagem indisponível</span></div>`;
+    }, { once: true });
+  });
+}
+
+$("#categorias").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-cat]");
+  if (!button) return;
+  categoriaAtual = button.dataset.cat;
+  document.querySelectorAll(".chip").forEach((item) => item.classList.toggle("active", item === button));
+  renderProdutos();
 });
-$("#busca").addEventListener("input", e => renderProdutos(catAtual, e.target.value));
-$("#produtos").addEventListener("click", e => {
-  const b = e.target.closest("[data-add]"); if (!b) return;
-  const p = produtos.find(x => x.id === b.dataset.add); if (!p) return;
-  const atual = carrinho.get(p.id) || { produto:p, quantidade:0 };
-  atual.quantidade++;
-  carrinho.set(p.id, atual); atualizarCarrinho();
+
+const searchProducts = debounce(() => {
+  const hasText = Boolean($("#busca").value.trim());
+  $("#limpar-busca").classList.toggle("hidden", !hasText);
+  renderProdutos();
+}, 180);
+$("#busca").addEventListener("input", searchProducts);
+$("#limpar-busca").addEventListener("click", () => {
+  $("#busca").value = "";
+  $("#limpar-busca").classList.add("hidden");
+  renderProdutos();
+});
+
+$("#produtos").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-add]");
+  if (!button) return;
+  const product = produtos.find((item) => item.id === button.dataset.add);
+  if (!product || product.disponivel === false) return;
+  const current = carrinho.get(product.id) || { produto: product, quantidade: 0 };
+  current.quantidade += 1;
+  carrinho.set(product.id, current);
+  atualizarCarrinho();
+  toast(`${product.nome} foi adicionado ao carrinho.`, "success", "Produto adicionado");
 });
 
 function atualizarCarrinho() {
-  const itens = [...carrinho.values()];
-  $("#qtd-carrinho").textContent = itens.reduce((s,i)=>s+i.quantidade,0);
-  $("#itens-carrinho").innerHTML = itens.length ? itens.map(i => `
+  const items = [...carrinho.values()];
+  $("#qtd-carrinho").textContent = items.reduce((sum, item) => sum + item.quantidade, 0);
+  $("#itens-carrinho").innerHTML = items.length ? items.map((item) => `
     <div class="cart-item">
-      <div><strong>${escapar(i.produto.nome)}</strong><br><small>${dinheiro(i.produto.preco)} cada</small></div>
-      <div class="qty"><button data-dec="${i.produto.id}">−</button><strong>${i.quantidade}</strong><button data-inc="${i.produto.id}">+</button></div>
-    </div>`).join("") : `<p class="muted">Seu carrinho está vazio.</p>`;
-  $("#total-carrinho").textContent = dinheiro(itens.reduce((s,i)=>s+i.quantidade*Number(i.produto.preco),0));
+      <div><strong>${escapar(item.produto.nome)}</strong><br><small>${dinheiro(item.produto.preco)} cada</small></div>
+      <div class="qty"><button data-dec="${item.produto.id}" type="button">−</button><strong>${item.quantidade}</strong><button data-inc="${item.produto.id}" type="button">+</button></div>
+    </div>`).join("") : `<div class="empty-state"><strong>Seu carrinho está vazio</strong><span>Adicione produtos para fazer o pedido.</span></div>`;
+  $("#total-carrinho").textContent = dinheiro(items.reduce((sum, item) => sum + item.quantidade * Number(item.produto.preco), 0));
+  $("#enviar-pedido").disabled = items.length === 0;
 }
 
-$("#itens-carrinho").addEventListener("click", e => {
-  const inc=e.target.closest("[data-inc]"), dec=e.target.closest("[data-dec]");
-  const id=inc?.dataset.inc || dec?.dataset.dec; if(!id) return;
-  const item=carrinho.get(id); if(!item) return;
-  item.quantidade += inc ? 1 : -1;
-  if(item.quantidade<=0)carrinho.delete(id); else carrinho.set(id,item);
+$("#itens-carrinho").addEventListener("click", (event) => {
+  const increment = event.target.closest("[data-inc]");
+  const decrement = event.target.closest("[data-dec]");
+  const id = increment?.dataset.inc || decrement?.dataset.dec;
+  if (!id) return;
+  const item = carrinho.get(id);
+  if (!item) return;
+  item.quantidade += increment ? 1 : -1;
+  if (item.quantidade <= 0) carrinho.delete(id);
+  else carrinho.set(id, item);
   atualizarCarrinho();
 });
 
-$("#abrir-carrinho").onclick=()=>{$("#modal-carrinho").classList.remove("hidden");atualizarCarrinho()};
-document.querySelectorAll("[data-fechar]").forEach(b=>b.onclick=()=>b.closest(".modal-backdrop").classList.add("hidden"));
+$("#abrir-carrinho").addEventListener("click", () => {
+  atualizarCarrinho();
+  $("#modal-carrinho").classList.remove("hidden");
+});
+document.querySelectorAll("[data-fechar]").forEach((button) => button.addEventListener("click", () => button.closest(".modal-backdrop").classList.add("hidden")));
+document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.addEventListener("click", (event) => {
+  if (event.target === backdrop) backdrop.classList.add("hidden");
+}));
 
 $("#enviar-pedido").addEventListener("click", async () => {
-  const itens=[...carrinho.values()];
-  if(!itens.length) return;
-  const btn=$("#enviar-pedido"); btn.disabled=true; $("#erro-pedido").textContent="";
+  const items = [...carrinho.values()];
+  if (!items.length) return;
+  const button = $("#enviar-pedido");
+  setButtonLoading(button, true, "Enviando pedido");
+  $("#erro-pedido").textContent = "";
+
   try {
-    const contaAtual=await getDoc(doc(db,"contas_ativas",mesaToken));
-    if(!contaAtual.exists() || contaAtual.data().sessaoId!==conta.sessaoId) throw new Error("CONTA_ENCERRADA");
-    const itensPedido=itens.map(i=>({
-      produtoId:i.produto.id,nome:i.produto.nome,quantidade:i.quantidade,
-      precoUnitario:Number(i.produto.preco),subtotal:Number(i.produto.preco)*i.quantidade
+    const accountNow = await getDoc(doc(db, "contas_ativas", mesaToken));
+    if (!accountNow.exists() || accountNow.data().sessaoId !== conta.sessaoId) throw new Error("CONTA_ENCERRADA");
+
+    let currentVersion = catalogoVersao;
+    try {
+      const metaNow = await getDoc(doc(db, "catalogo_meta", "principal"));
+      currentVersion = metaNow.exists() ? Number(metaNow.data().versao || 0) : 0;
+    } catch (metaError) {
+      console.warn("Não foi possível validar a versão do catálogo:", metaError);
+    }
+    if (currentVersion !== catalogoVersao) {
+      await carregarCatalogoOtimizado(true);
+      const unavailable = items.filter((item) => produtos.find((product) => product.id === item.produto.id)?.disponivel === false);
+      if (unavailable.length) {
+        unavailable.forEach((item) => carrinho.delete(item.produto.id));
+        atualizarCarrinho();
+        throw new Error("PRODUTO_ESGOTADO");
+      }
+    }
+
+    const orderItems = items.map((item) => ({
+      produtoId: item.produto.id,
+      nome: item.produto.nome,
+      quantidade: item.quantidade,
+      precoUnitario: Number(item.produto.preco),
+      subtotal: Number(item.produto.preco) * item.quantidade
     }));
-    const total=itensPedido.reduce((s,i)=>s+i.subtotal,0);
-    await addDoc(collection(db,"pedidos"),{
-      mesaToken,mesaNumero:mesa.numero,sessaoId:conta.sessaoId,
-      responsavelConta:conta.responsavel,solicitadoPor:clienteNome,clienteUid:usuario.uid,
-      itens:itensPedido,total,observacao:limparTexto($("#observacao").value,240),
-      status:"novo",criadoEm:serverTimestamp(),statusImpressao:"pendente"
+    const total = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+
+    await addDoc(collection(db, "pedidos"), {
+      mesaToken,
+      mesaNumero: mesa.numero,
+      sessaoId: conta.sessaoId,
+      responsavelConta: conta.responsavel,
+      solicitadoPor: clienteNome,
+      clienteUid: usuario.uid,
+      itens: orderItems,
+      total,
+      observacao: limparTexto($("#observacao").value, 240),
+      status: "novo",
+      criadoEm: serverTimestamp(),
+      statusImpressao: "pendente"
     });
-    carrinho.clear(); atualizarCarrinho(); $("#observacao").value="";
+
+    carrinho.clear();
+    atualizarCarrinho();
+    $("#observacao").value = "";
     $("#modal-carrinho").classList.add("hidden");
-    alert("Pedido enviado para a central.");
-  } catch(e) {
-    console.error(e);
-    $("#erro-pedido").textContent=e.message==="CONTA_ENCERRADA" ? "A conta foi encerrada. Leia novamente o QR Code." : "Não foi possível enviar o pedido.";
-  } finally {btn.disabled=false}
+    toast("O pedido chegou à Central e será atendido em breve.", "success", "Pedido enviado");
+  } catch (error) {
+    console.error(error);
+    if (error.message === "CONTA_ENCERRADA") {
+      $("#erro-pedido").textContent = "A conta desta mesa foi encerrada. Leia novamente o QR Code.";
+    } else if (error.message === "PRODUTO_ESGOTADO") {
+      $("#erro-pedido").textContent = "Um produto acabou de ficar esgotado e foi removido do carrinho.";
+    } else {
+      $("#erro-pedido").textContent = formatFirebaseError(error);
+    }
+  } finally {
+    setButtonLoading(button, false);
+  }
 });
 
-$("#meus-pedidos").addEventListener("click", async()=>{
+const statusOrder = ["novo", "aceito", "preparo", "pronto", "entregue"];
+const statusLabels = { novo: "Enviado", aceito: "Aceito", preparo: "Em preparo", pronto: "Pronto", entregue: "Entregue", cancelado: "Cancelado" };
+
+$("#meus-pedidos").addEventListener("click", async () => {
   $("#modal-pedidos").classList.remove("hidden");
-  const lista=$("#lista-meus-pedidos"); lista.innerHTML="Carregando...";
-  const snap=await getDocs(query(collection(db,"pedidos"),where("clienteUid","==",usuario.uid),orderBy("criadoEm","desc"),limit(30)));
-  lista.innerHTML=snap.empty ? `<p class="muted">Nenhum pedido neste celular.</p>` : snap.docs.map(d=>{
-    const p=d.data(), dh=dataHora(p.criadoEm);
-    return `<article class="status-card"><div class="row-between"><strong>Mesa ${String(p.mesaNumero).padStart(2,"0")}</strong><span class="badge">${escapar(p.status)}</span></div><small>${dh.data} às ${dh.hora}</small><p>${p.itens.map(i=>`${i.quantidade}x ${escapar(i.nome)}`).join("<br>")}</p><strong>${dinheiro(p.total)}</strong></article>`
-  }).join("");
+  const list = $("#lista-meus-pedidos");
+  list.innerHTML = `<div class="empty-state"><div class="spinner"></div><strong>Carregando seus pedidos</strong></div>`;
+
+  try {
+    const snap = await getDocs(query(collection(db, "pedidos"), where("clienteUid", "==", usuario.uid), limit(30)));
+    const orders = snap.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => (b.criadoEm?.toMillis?.() || 0) - (a.criadoEm?.toMillis?.() || 0));
+
+    list.innerHTML = orders.length ? orders.map((order) => {
+      const date = dataHora(order.criadoEm);
+      const currentIndex = Math.max(0, statusOrder.indexOf(order.status));
+      return `<article class="status-card">
+        <div class="row-between"><strong>Mesa ${String(order.mesaNumero).padStart(2, "0")}</strong><span class="badge ${order.status === "cancelado" ? "badge-danger" : "badge-warning"}">${escapar(statusLabels[order.status] || order.status)}</span></div>
+        <small class="muted">${date.data} às ${date.hora}</small>
+        <p>${order.itens.map((item) => `${item.quantidade}x ${escapar(item.nome)}`).join("<br>")}</p>
+        <div class="row-between"><strong>${dinheiro(order.total)}</strong><small class="muted">Pedido por ${escapar(order.solicitadoPor)}</small></div>
+        ${order.status !== "cancelado" ? `<div class="status-progress" title="Andamento do pedido">${statusOrder.map((_, index) => `<i class="${index <= currentIndex ? "active" : ""}"></i>`).join("")}</div>` : ""}
+      </article>`;
+    }).join("") : `<div class="empty-state"><strong>Nenhum pedido neste celular</strong><span>Os pedidos enviados aparecerão aqui.</span></div>`;
+  } catch (error) {
+    console.error(error);
+    list.innerHTML = `<div class="notice error">Não foi possível carregar seus pedidos.<br><small>${escapar(formatFirebaseError(error))}</small></div>`;
+  }
 });

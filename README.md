@@ -1,47 +1,41 @@
-# Miranda Empório de Bebidas — Sistema completo corrigido V2
+# Miranda Empório de Bebidas — V5 Design e Otimização
 
-Este ZIP contém o sistema inteiro, já com:
+Sistema completo para GitHub Pages + Firebase, sem o agente instalável de impressão automática.
 
-- Configuração do projeto Firebase `emporio-aff6d`;
-- Firebase JavaScript SDK 12.16.0;
-- Login administrativo;
-- Persistência da sessão do administrador;
-- Proteção da Central por autenticação e perfil ativo;
-- Botão Sair;
-- Mensagens de erro de inicialização;
-- Página `diagnostico.html`;
-- Cardápio público;
-- Contas por mesa;
-- Pedidos;
-- Central de pedidos;
-- Produtos e categorias;
-- Histórico;
-- Mesas e QR Codes;
-- Usuários e permissões;
-- Impressão manual;
-- Regras e índices do Firestore.
+## Principais melhorias da V5
 
-## Como atualizar no GitHub
+- Novo design profissional no cardápio e na Central;
+- Logo oficial da Miranda em todas as áreas;
+- Central totalmente responsiva no celular, com menu lateral móvel;
+- Animações, skeletons e indicadores de carregamento;
+- Mensagens internas por toast e confirmação em modal;
+- Nenhum `alert()` ou `confirm()` do navegador;
+- Checkbox de estoque para mostrar produto como **ESGOTADO**;
+- Produto esgotado permanece visível, com sobreposição na imagem e preço substituído por ESGOTADO;
+- Opção separada para ocultar o produto do cardápio;
+- Edição, exclusão e ativação/desativação de produtos e categorias;
+- Exclusão de categoria bloqueada enquanto houver produtos vinculados;
+- Cache inteligente do cardápio para reduzir leituras do Firestore;
+- Documento `catalogo_meta/principal` usado como controle de versão;
+- Central escuta pedidos e contas em listeners separados, evitando reler todas as contas a cada pedido;
+- Consulta de conta usa somente a sessão atual;
+- Histórico limitado a 50 contas por carregamento;
+- Impressão manual continua disponível com logo, data e horário.
 
-Apague os arquivos antigos do repositório ou substitua tudo pelo conteúdo deste ZIP.
+## Como publicar
 
-Importante: envie o conteúdo que está dentro da pasta para a raiz do repositório, para que
-`index.html`, `admin`, `js`, `css` e as demais pastas fiquem diretamente na raiz.
+1. Extraia o ZIP.
+2. Envie **todo o conteúdo interno** para a raiz do repositório GitHub.
+3. Substitua os arquivos existentes.
+4. Publique as regras atualizadas do arquivo `firestore.rules` no Firebase Console.
+5. Aguarde o GitHub Pages concluir e use `Ctrl + F5`.
 
-Depois aguarde o GitHub Pages publicar e pressione `Ctrl + F5`.
+## Importante sobre estoque
 
-## Diagnóstico
+- **Disponível em estoque marcado:** produto normal e botão Adicionar.
+- **Disponível em estoque desmarcado:** produto continua visível com destaque ESGOTADO.
+- **Exibir no cardápio desmarcado:** produto fica oculto para os clientes.
 
-Abra:
+## Otimização de leituras
 
-`https://renanmiranda528-png.github.io/Miranda.Emp-rio/diagnostico.html`
-
-## Central
-
-`https://renanmiranda528-png.github.io/Miranda.Emp-rio/admin/login.html`
-
-## Domínio autorizado
-
-No Firebase Authentication, confirme este domínio:
-
-`renanmiranda528-png.github.io`
+O cardápio salva categorias, produtos e configuração pública no navegador. Durante 2 minutos, novas aberturas no mesmo navegador podem usar zero leituras de catálogo. Depois disso, o sistema consulta apenas o documento de versão; os produtos são baixados novamente somente quando houve uma alteração administrativa.

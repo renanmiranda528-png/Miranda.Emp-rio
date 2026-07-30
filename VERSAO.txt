@@ -1,3 +1,3 @@
 Miranda Empório de Bebidas
-Sistema completo corrigido V3
-Correção: erro Invalid regular expression flags
+Versão V5 — Design, Mobile, Estoque e Otimização Firebase
+Data: 30/07/2026
