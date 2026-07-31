@@ -1,6 +1,6 @@
-import { auth, db } from "../shared/firebase.js?v=7";
-import { dinheiro, dataHora, escapar, limparTexto, gerarId, debounce } from "../shared/utils.js?v=7";
-import { toast, confirmar, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=7";
+import { auth, db } from "../shared/firebase.js?v=8";
+import { dinheiro, dataHora, escapar, limparTexto, gerarId, debounce } from "../shared/utils.js?v=8";
+import { toast, confirmar, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=8";
 import {
   onAuthStateChanged,
   signOut
@@ -188,10 +188,9 @@ async function pedidos() {
     </section>
     <section class="single-order-board card">
       <div class="column-header">
-        <div><p class="eyebrow">Fila atual</p><h2>Pedidos enviados</h2></div>
+        <div><h2>Pedidos enviados</h2></div>
         <span id="count-pendentes" class="column-count">0</span>
       </div>
-      <p class="muted flow-help">O pedido entra nesta fila imediatamente. Não precisa aceitar nem mudar para preparo. Marcar como entregue é opcional para o fechamento da conta.</p>
       <div id="col-pendentes" class="order-list order-grid"><div class="empty-state"><div class="spinner"></div></div></div>
     </section>
   </div>`;
@@ -336,7 +335,7 @@ async function mesas() {
   ]);
   const accounts = new Map(accountsSnap.docs.map((item) => [item.id, { id: item.id, ...item.data() }]));
   const tables = tablesSnap.docs.map((item) => ({ id: item.id, ...item.data() }));
-  content.innerHTML = `<div class="page-enter"><div class="section-toolbar"><div><p class="eyebrow">Visão do salão</p><h2>Mesas</h2></div><span class="badge">${accounts.size} conta(s) aberta(s)</span></div><section class="data-list">${tables.length ? tables.map((table) => tableRow(table, accounts.get(table.id))).join("") : `<div class="empty-state"><strong>Nenhuma mesa cadastrada</strong><span>Crie as mesas na área de QR Codes.</span></div>`}</section></div>`;
+  content.innerHTML = `<div class="page-enter"><div class="section-toolbar"><div><h2>Mesas</h2></div><span class="badge">${accounts.size} conta(s) aberta(s)</span></div><section class="data-list">${tables.length ? tables.map((table) => tableRow(table, accounts.get(table.id))).join("") : `<div class="empty-state"><strong>Nenhuma mesa cadastrada</strong><span>Crie as mesas na área de QR Codes.</span></div>`}</section></div>`;
   content.onclick = (event) => {
     const button = event.target.closest("[data-account]");
     if (button) openAccount(button.dataset.account);
@@ -382,7 +381,7 @@ async function openAccount(token) {
       </article>`;
     };
 
-    openModal(`<div class="account-detail-head"><div><p class="eyebrow">Mesa ${String(account.mesaNumero).padStart(2, "0")}</p><h2>Conta de ${escapar(account.responsavel)}</h2><p class="muted">Aberta em ${date.data} às ${date.hora}</p></div><div class="account-total"><small>Total atual</small><strong>${dinheiro(total)}</strong></div></div>
+    openModal(`<div class="account-detail-head"><div><h2>Conta de ${escapar(account.responsavel)}</h2><p class="muted">Aberta em ${date.data} às ${date.hora}</p></div><div class="account-total"><small>Total atual</small><strong>${dinheiro(total)}</strong></div></div>
       <div class="notice compact">A conta pode ser paga mesmo que algum pedido ainda esteja como “Enviado”. Marcar como entregue é opcional.</div>
       <div class="status-list">${allOrders.length ? allOrders.map(renderOrder).join("") : `<div class="empty-state"><strong>Nenhum pedido nesta conta</strong></div>`}</div>
       <div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Fechar</button>${profile.perfil !== "atendimento" ? `<button id="receive-account" class="btn btn-success" type="button" ${billableOrders.length ? "" : "disabled"}>Receber e fechar conta</button>` : ""}</div>`);
@@ -399,7 +398,7 @@ async function openAccount(token) {
 }
 
 function paymentModal(token, account, orders, total) {
-  openModal(`<p class="eyebrow">Fechamento</p><h2>Receber conta</h2><p class="muted">Mesa ${String(account.mesaNumero).padStart(2, "0")} · ${escapar(account.responsavel)}</p><h3 style="font-size:2rem;color:var(--gold)">${dinheiro(total)}</h3>
+  openModal(`<h2>Receber conta</h2><p class="muted">Mesa ${String(account.mesaNumero).padStart(2, "0")} · ${escapar(account.responsavel)}</p><h3 style="font-size:2rem;color:var(--gold)">${dinheiro(total)}</h3>
     <form id="payment-form" class="form-grid">
       <label>Forma de pagamento<select id="payment-method"><option value="Pix">Pix</option><option value="Dinheiro">Dinheiro</option><option value="Débito">Débito</option><option value="Crédito">Crédito</option><option value="Dividido">Pagamento dividido</option></select></label>
       <div id="split-payment" class="form-grid hidden">
@@ -624,7 +623,7 @@ function productForm(product = null) {
     toast("Crie pelo menos uma categoria antes de cadastrar produtos.", "warning");
     return;
   }
-  openModal(`<div class="row-between"><div><p class="eyebrow">Cardápio</p><h2>${product ? "Editar produto" : "Novo produto"}</h2></div><button data-close class="btn btn-secondary btn-icon" type="button">×</button></div>
+  openModal(`<div class="row-between"><div><h2>${product ? "Editar produto" : "Novo produto"}</h2></div><button data-close class="btn btn-secondary btn-icon" type="button">×</button></div>
     <form id="product-form" class="form-grid">
       <div class="form-row"><label>Nome<input id="product-name" value="${escapar(product?.nome || "")}" maxlength="80" required></label><label>Preço<input id="product-price" type="number" min="0" step="0.01" value="${product?.preco ?? ""}" required></label></div>
       <label>Descrição<textarea id="product-description" maxlength="180" placeholder="Volume, sabor ou detalhes do produto">${escapar(product?.descricao || "")}</textarea></label>
@@ -670,7 +669,7 @@ function productForm(product = null) {
 }
 
 function categoryForm(category = null) {
-  openModal(`<div class="row-between"><div><p class="eyebrow">Cardápio</p><h2>${category ? "Editar categoria" : "Nova categoria"}</h2></div><button data-close class="btn btn-secondary btn-icon" type="button">×</button></div>
+  openModal(`<div class="row-between"><div><h2>${category ? "Editar categoria" : "Nova categoria"}</h2></div><button data-close class="btn btn-secondary btn-icon" type="button">×</button></div>
     <form id="category-form" class="form-grid"><label>Nome<input id="category-name" value="${escapar(category?.nome || "")}" maxlength="60" required></label><label>Ordem de exibição<input id="category-order" type="number" min="0" value="${Number(category?.ordem || 1)}"></label><label class="switch-row"><span><strong>Exibir categoria</strong><span class="form-help">Ao ocultar, os produtos desta categoria também deixam de aparecer.</span></span><input id="category-active" type="checkbox" ${category?.ativa !== false ? "checked" : ""}><span class="switch"></span></label><div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar categoria</button></div></form>`);
   $("#category-form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -719,7 +718,7 @@ async function deleteCatalogDocument(reference) {
 async function historico() {
   const snapshot = await getDocs(query(collection(db, "historico_contas"), orderBy("fechadaEm", "desc"), limit(50)));
   const accounts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-  content.innerHTML = `<div class="page-enter"><div class="section-toolbar"><div><p class="eyebrow">Últimas contas</p><h2>Histórico</h2></div><span class="badge">Máximo de 50 contas por consulta</span></div><section class="data-list">${accounts.length ? accounts.map((account) => { const date = dataHora(account.fechadaEm); return `<article class="data-row card"><div class="data-title"><strong>Mesa ${String(account.mesaNumero).padStart(2, "0")} · ${escapar(account.responsavel)}</strong><small>${date.data} às ${date.hora}</small></div><div><strong>${dinheiro(account.total)}</strong></div><div><span class="badge">${escapar(account.formaPagamento || "—")}</span></div><div class="data-actions"><button class="btn btn-secondary btn-sm" data-history="${account.id}" type="button">Detalhes</button></div></article>`; }).join("") : `<div class="empty-state"><strong>Nenhuma conta fechada</strong></div>`}</section></div>`;
+  content.innerHTML = `<div class="page-enter"><div class="section-toolbar"><div><h2>Histórico</h2></div><span class="badge">Máximo de 50 contas por consulta</span></div><section class="data-list">${accounts.length ? accounts.map((account) => { const date = dataHora(account.fechadaEm); return `<article class="data-row card"><div class="data-title"><strong>Mesa ${String(account.mesaNumero).padStart(2, "0")} · ${escapar(account.responsavel)}</strong><small>${date.data} às ${date.hora}</small></div><div><strong>${dinheiro(account.total)}</strong></div><div><span class="badge">${escapar(account.formaPagamento || "—")}</span></div><div class="data-actions"><button class="btn btn-secondary btn-sm" data-history="${account.id}" type="button">Detalhes</button></div></article>`; }).join("") : `<div class="empty-state"><strong>Nenhuma conta fechada</strong></div>`}</section></div>`;
   content.onclick = (event) => {
     const button = event.target.closest("[data-history]");
     if (!button) return;
@@ -730,7 +729,7 @@ async function historico() {
 
 function historyDetails(account) {
   const date = dataHora(account.fechadaEm);
-  openModal(`<div class="row-between"><div><p class="eyebrow">Conta paga</p><h2>Mesa ${String(account.mesaNumero).padStart(2, "0")} · ${escapar(account.responsavel)}</h2></div><button data-close class="btn btn-secondary btn-icon">×</button></div><p class="muted">Fechada em ${date.data} às ${date.hora}</p><div class="status-list">${(account.pedidos || []).map((order) => `<article class="status-card"><strong>${escapar(order.solicitadoPor)}</strong><p>${order.itens.map((item) => `${item.quantidade}x ${escapar(item.nome)}`).join("<br>")}</p><strong>${dinheiro(order.total)}</strong></article>`).join("")}</div><div class="row-between cart-total"><strong>Total pago</strong><strong style="color:var(--gold)">${dinheiro(account.total)}</strong></div><p class="muted">${(account.pagamentos || []).map((item) => `${escapar(item.forma)}: ${dinheiro(item.valor)}`).join(" · ") || escapar(account.formaPagamento || "")}</p><div class="modal-actions"><button data-close class="btn btn-secondary">Fechar</button></div>`);
+  openModal(`<div class="row-between"><div><h2>Mesa ${String(account.mesaNumero).padStart(2, "0")} · ${escapar(account.responsavel)}</h2></div><button data-close class="btn btn-secondary btn-icon">×</button></div><p class="muted">Fechada em ${date.data} às ${date.hora}</p><div class="status-list">${(account.pedidos || []).map((order) => `<article class="status-card"><strong>${escapar(order.solicitadoPor)}</strong><p>${order.itens.map((item) => `${item.quantidade}x ${escapar(item.nome)}`).join("<br>")}</p><strong>${dinheiro(order.total)}</strong></article>`).join("")}</div><div class="row-between cart-total"><strong>Total pago</strong><strong style="color:var(--gold)">${dinheiro(account.total)}</strong></div><p class="muted">${(account.pagamentos || []).map((item) => `${escapar(item.forma)}: ${dinheiro(item.valor)}`).join(" · ") || escapar(account.formaPagamento || "")}</p><div class="modal-actions"><button data-close class="btn btn-secondary">Fechar</button></div>`);
 }
 
 
@@ -789,7 +788,7 @@ function aggregateReport(accounts) {
 async function relatorio() {
   content.innerHTML = `<div class="page-enter">
     <div class="section-toolbar">
-      <div><p class="eyebrow">Resultados do sistema</p><h2>Relatórios</h2></div>
+      <div><h2>Relatórios</h2></div>
       <div class="section-toolbar-right report-controls">
         <select id="report-period" aria-label="Período"><option value="semana">Semana atual</option><option value="mes" selected>Mês atual</option></select>
         <div class="view-switch"><button class="tab-button active" data-report-view="grafico" type="button">Gráfico</button><button class="tab-button" data-report-view="texto" type="button">Texto</button></div>
@@ -863,7 +862,7 @@ function renderReport() {
 
   if (reportState.visualizacao === "texto") {
     target.innerHTML = `${reportSummaryCards(data)}<section class="report-text card">
-      <div class="row-between"><div><p class="eyebrow">Resumo em texto</p><h3>${reportState.periodo === "semana" ? "Semana atual" : "Mês atual"}</h3></div><span class="badge">${dateLabel}</span></div>
+      <div class="row-between"><div><h3>${reportState.periodo === "semana" ? "Semana atual" : "Mês atual"}</h3></div><span class="badge">${dateLabel}</span></div>
       <p><strong>Valor recebido:</strong> ${dinheiro(data.faturamento)}</p>
       <p><strong>Contas fechadas:</strong> ${data.contas}</p>
       <p><strong>Pedidos realizados:</strong> ${data.pedidos}</p>
@@ -875,8 +874,8 @@ function renderReport() {
   }
 
   target.innerHTML = `${reportSummaryCards(data)}<section class="report-grid">
-    <article class="report-panel card"><div class="report-panel-head"><div><p class="eyebrow">Faturamento</p><h3>Valor por dia</h3></div><span class="badge">${dateLabel}</span></div>${barRows(data.diasOrdenados, "valor", (item) => dinheiro(item.valor))}</article>
-    <article class="report-panel card"><div class="report-panel-head"><div><p class="eyebrow">Produtos</p><h3>Mais pedidos</h3></div><span class="badge">Top 10</span></div>${barRows(data.produtosOrdenados.slice(0, 10), "quantidade", (item) => `${item.quantidade} un.`)}</article>
+    <article class="report-panel card"><div class="report-panel-head"><div><h3>Valor por dia</h3></div><span class="badge">${dateLabel}</span></div>${barRows(data.diasOrdenados, "valor", (item) => dinheiro(item.valor))}</article>
+    <article class="report-panel card"><div class="report-panel-head"><div><h3>Mais pedidos</h3></div><span class="badge">Top 10</span></div>${barRows(data.produtosOrdenados.slice(0, 10), "quantidade", (item) => `${item.quantidade} un.`)}</article>
   </section>`;
 }
 
@@ -923,7 +922,7 @@ async function qrcodes() {
   const openAccounts = new Set(accountsSnap.docs.map((item) => item.id));
   const render = () => {
     const baseMenu = new URL("../", window.location.href);
-    content.innerHTML = `<div class="page-enter"><div class="section-toolbar"><div><p class="eyebrow">Links permanentes</p><h2>Mesas e QR Codes</h2></div><button id="new-table" class="btn btn-primary" type="button">Nova mesa</button></div><section class="data-list">${tables.length ? tables.map((table) => { const destination = new URL(baseMenu.href); destination.searchParams.set("mesa", String(table.numero).padStart(2, "0")); destination.searchParams.set("token", table.id); const url = destination.href; return `<article class="data-row card"><div class="data-title"><strong>Mesa ${String(table.numero).padStart(2, "0")}</strong><small>${table.ativa ? "QR ativo" : "QR desativado"}${openAccounts.has(table.id) ? " · Conta aberta" : ""}</small><div class="qr-url">${escapar(url)}</div></div><div><img class="qr-preview" alt="QR da Mesa ${table.numero}" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}"></div><div><span class="badge ${table.ativa ? "badge-success" : "badge-danger"}">${table.ativa ? "Ativa" : "Desativada"}</span></div><div class="data-actions"><button class="btn btn-secondary btn-sm" data-copy-url="${encodeURIComponent(url)}">Copiar link</button><button class="btn btn-secondary btn-sm" data-toggle-table="${table.id}">${table.ativa ? "Desativar" : "Ativar"}</button><button class="btn btn-ghost btn-sm" data-delete-table="${table.id}">Excluir</button></div></article>`; }).join("") : `<div class="empty-state"><strong>Nenhuma mesa cadastrada</strong></div>`}</section></div>`;
+    content.innerHTML = `<div class="page-enter"><div class="section-toolbar"><div><h2>Mesas e QR Codes</h2></div><button id="new-table" class="btn btn-primary" type="button">Nova mesa</button></div><section class="data-list">${tables.length ? tables.map((table) => { const destination = new URL(baseMenu.href); destination.searchParams.set("mesa", String(table.numero).padStart(2, "0")); destination.searchParams.set("token", table.id); const url = destination.href; return `<article class="data-row card"><div class="data-title"><strong>Mesa ${String(table.numero).padStart(2, "0")}</strong><small>${table.ativa ? "QR ativo" : "QR desativado"}${openAccounts.has(table.id) ? " · Conta aberta" : ""}</small><div class="qr-url">${escapar(url)}</div></div><div><img class="qr-preview" alt="QR da Mesa ${table.numero}" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}"></div><div><span class="badge ${table.ativa ? "badge-success" : "badge-danger"}">${table.ativa ? "Ativa" : "Desativada"}</span></div><div class="data-actions"><button class="btn btn-secondary btn-sm" data-copy-url="${encodeURIComponent(url)}">Copiar link</button><button class="btn btn-secondary btn-sm" data-toggle-table="${table.id}">${table.ativa ? "Desativar" : "Ativar"}</button><button class="btn btn-ghost btn-sm" data-delete-table="${table.id}">Excluir</button></div></article>`; }).join("") : `<div class="empty-state"><strong>Nenhuma mesa cadastrada</strong></div>`}</section></div>`;
     $("#new-table").addEventListener("click", tableForm);
   };
   render();
@@ -957,7 +956,7 @@ async function qrcodes() {
   };
 
   function tableForm() {
-    openModal(`<div class="row-between"><div><p class="eyebrow">QR Code</p><h2>Nova mesa</h2></div><button data-close class="btn btn-secondary btn-icon">×</button></div><form id="table-form" class="form-grid"><label>Número da mesa<input id="table-number" type="number" min="1" required></label><div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Criar mesa e QR</button></div></form>`);
+    openModal(`<div class="row-between"><div><h2>Nova mesa</h2></div><button data-close class="btn btn-secondary btn-icon">×</button></div><form id="table-form" class="form-grid"><label>Número da mesa<input id="table-number" type="number" min="1" required></label><div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Criar mesa e QR</button></div></form>`);
     $("#table-form").addEventListener("submit", async (event) => {
       event.preventDefault(); const button = event.submitter; setButtonLoading(button, true);
       const number = Number($("#table-number").value);
@@ -976,7 +975,7 @@ async function qrcodes() {
 async function usuarios() {
   let users = (await getDocs(collection(db, "usuarios"))).docs.map((item) => ({ id: item.id, ...item.data() }));
   const render = () => {
-    content.innerHTML = `<div class="page-enter"><div class="notice">Crie primeiro o login em Authentication → Usuários. Depois cadastre aqui o perfil usando o UID.</div><div class="section-toolbar section"><div><p class="eyebrow">Equipe</p><h2>Usuários autorizados</h2></div><button id="new-user" class="btn btn-primary">Cadastrar perfil</button></div><section class="data-list">${users.map((item) => `<article class="data-row card"><div class="data-title"><strong>${escapar(item.nome)}</strong><small>${escapar(item.email || item.id)}</small></div><div><span class="badge">${escapar(item.perfil)}</span></div><div><span class="badge ${item.ativo ? "badge-success" : "badge-danger"}">${item.ativo ? "Ativo" : "Inativo"}</span></div><div class="data-actions"><button class="btn btn-secondary btn-sm" data-toggle-user="${item.id}">${item.ativo ? "Desativar" : "Ativar"}</button></div></article>`).join("")}</section></div>`;
+    content.innerHTML = `<div class="page-enter"><div class="notice">Crie primeiro o login em Authentication → Usuários. Depois cadastre aqui o perfil usando o UID.</div><div class="section-toolbar section"><div><h2>Usuários autorizados</h2></div><button id="new-user" class="btn btn-primary">Cadastrar perfil</button></div><section class="data-list">${users.map((item) => `<article class="data-row card"><div class="data-title"><strong>${escapar(item.nome)}</strong><small>${escapar(item.email || item.id)}</small></div><div><span class="badge">${escapar(item.perfil)}</span></div><div><span class="badge ${item.ativo ? "badge-success" : "badge-danger"}">${item.ativo ? "Ativo" : "Inativo"}</span></div><div class="data-actions"><button class="btn btn-secondary btn-sm" data-toggle-user="${item.id}">${item.ativo ? "Desativar" : "Ativar"}</button></div></article>`).join("")}</section></div>`;
     $("#new-user").addEventListener("click", userForm);
   };
   render();
@@ -988,7 +987,7 @@ async function usuarios() {
     try { await updateDoc(doc(db, "usuarios", item.id), { ativo: !item.ativo }); item.ativo = !item.ativo; render(); toast("Acesso atualizado.", "success"); } catch (error) { toast(formatFirebaseError(error), "error"); setButtonLoading(button, false); }
   };
   function userForm() {
-    openModal(`<div class="row-between"><div><p class="eyebrow">Equipe</p><h2>Cadastrar perfil</h2></div><button data-close class="btn btn-secondary btn-icon">×</button></div><form id="user-form" class="form-grid"><label>UID do Authentication<input id="user-uid" required></label><label>Nome<input id="user-name" required></label><label>E-mail<input id="user-email" type="email"></label><label>Perfil<select id="user-profile"><option value="atendimento">Atendimento</option><option value="caixa">Caixa</option><option value="administrador">Administrador</option></select></label><div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar perfil</button></div></form>`);
+    openModal(`<div class="row-between"><div><h2>Cadastrar perfil</h2></div><button data-close class="btn btn-secondary btn-icon">×</button></div><form id="user-form" class="form-grid"><label>UID do Authentication<input id="user-uid" required></label><label>Nome<input id="user-name" required></label><label>E-mail<input id="user-email" type="email"></label><label>Perfil<select id="user-profile"><option value="atendimento">Atendimento</option><option value="caixa">Caixa</option><option value="administrador">Administrador</option></select></label><div class="modal-actions"><button data-close class="btn btn-secondary" type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar perfil</button></div></form>`);
     $("#user-form").addEventListener("submit", async (event) => {
       event.preventDefault(); const button = event.submitter; setButtonLoading(button, true);
       const id = $("#user-uid").value.trim(); const data = { nome: limparTexto($("#user-name").value, 60), email: $("#user-email").value.trim(), perfil: $("#user-profile").value, ativo: true };
@@ -1001,7 +1000,7 @@ async function usuarios() {
 async function configuracoes() {
   const snapshot = await getDoc(doc(db, "configuracoes", "publico"));
   const settings = snapshot.exists() ? snapshot.data() : {};
-  content.innerHTML = `<div class="page-enter"><section class="section-card card" style="max-width:760px"><p class="eyebrow">Informações públicas</p><h2>Configurações do cardápio</h2><form id="settings-form" class="form-grid"><label>Nome da loja<input id="store-name" value="${escapar(settings.nomeLoja || "Miranda Empório de Bebidas")}"></label><label>WhatsApp<input id="store-whatsapp" value="${escapar(settings.whatsapp || "")}" placeholder="5516999999999"></label><label>Mensagem do topo<textarea id="store-message" maxlength="240">${escapar(settings.mensagem || "Bebidas, espetinhos e porções. Peça quantas vezes quiser e pague somente ao fechar a conta no caixa.")}</textarea></label><button class="btn btn-primary" type="submit">Salvar configurações</button></form></section></div>`;
+  content.innerHTML = `<div class="page-enter"><section class="section-card card" style="max-width:760px"><h2>Configurações do cardápio</h2><form id="settings-form" class="form-grid"><label>Nome da loja<input id="store-name" value="${escapar(settings.nomeLoja || "Miranda Empório de Bebidas")}"></label><label>WhatsApp<input id="store-whatsapp" value="${escapar(settings.whatsapp || "")}" placeholder="5516999999999"></label><label>Mensagem do topo<textarea id="store-message" maxlength="240">${escapar(settings.mensagem || "Bebidas, espetinhos e porções. Peça quantas vezes quiser e pague somente ao fechar a conta no caixa.")}</textarea></label><button class="btn btn-primary" type="submit">Salvar configurações</button></form></section></div>`;
   $("#settings-form").addEventListener("submit", async (event) => {
     event.preventDefault(); const button = event.submitter; setButtonLoading(button, true);
     const data = { nomeLoja: limparTexto($("#store-name").value, 80), whatsapp: limparTexto($("#store-whatsapp").value, 20), mensagem: limparTexto($("#store-message").value, 240), atualizadoEm: serverTimestamp() };

@@ -1,4 +1,4 @@
-import { auth, db } from "../shared/firebase.js?v=7";
+import { auth, db } from "../shared/firebase.js?v=8";
 import {
   dinheiro,
   gerarId,
@@ -6,7 +6,7 @@ import {
   escapar,
   dataHora,
   debounce
-} from "../shared/utils.js?v=7";
+} from "../shared/utils.js?v=8";
 import {
   toast,
   confirmar,
@@ -14,7 +14,7 @@ import {
   showLoading,
   hideLoading,
   formatFirebaseError
-} from "../shared/ui.js?v=7";
+} from "../shared/ui.js?v=8";
 import {
   onAuthStateChanged,
   signOut

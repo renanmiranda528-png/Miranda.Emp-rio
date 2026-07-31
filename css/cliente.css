@@ -33,7 +33,7 @@
 .brand-copy h1 { margin: 0; font-size: 1.02rem; white-space: nowrap; }
 .brand-copy .eyebrow { margin-bottom: 2px; }
 
-.container { width: min(1180px, calc(100% - 30px)); margin: 0 auto; padding: 22px 0 110px; }
+.container { width: min(1180px, calc(100% - 30px)); margin: 0 auto; padding: 10px 0 110px; }
 .hero {
   position: relative;
   isolation: isolate;
@@ -79,7 +79,7 @@
 .hero-features { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 23px; }
 .hero-features span { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; color: #fff; background: rgba(255,255,255,.055); font-size: .82rem; font-weight: 720; }
 
-.identificacao { position: relative; padding: 22px; margin-bottom: 23px; overflow: hidden; }
+.identificacao { position: relative; padding: 22px; margin: 4px 0 23px; overflow: hidden; }
 .identificacao::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--gold); }
 .identification-grid { display: grid; grid-template-columns: 1fr minmax(240px, 410px); align-items: center; gap: 22px; }
 .account-summary { display: flex; align-items: flex-start; gap: 13px; }

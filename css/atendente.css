@@ -97,7 +97,7 @@
   gap: 9px;
 }
 .waiter-container {
-  padding-top: 18px;
+  padding-top: 8px;
 }
 .waiter-hero {
   min-height: 245px;
@@ -137,7 +137,7 @@
 }
 .waiter-setup {
   padding: 22px;
-  margin-bottom: 18px;
+  margin: 4px 0 18px;
 }
 .waiter-setup-heading {
   display: flex;

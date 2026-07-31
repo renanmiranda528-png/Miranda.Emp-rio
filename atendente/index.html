@@ -7,9 +7,9 @@
   <meta name="description" content="Cardápio da equipe de atendimento da Miranda Empório de Bebidas">
   <title>Cardápio do Atendente | Miranda</title>
   <link rel="icon" href="../assets/img/logo-miranda.webp">
-  <link rel="stylesheet" href="../css/global.css?v=7">
-  <link rel="stylesheet" href="../css/cliente.css?v=7">
-  <link rel="stylesheet" href="../css/atendente.css?v=7">
+  <link rel="stylesheet" href="../css/global.css?v=8">
+  <link rel="stylesheet" href="../css/cliente.css?v=8">
+  <link rel="stylesheet" href="../css/atendente.css?v=8">
 </head>
 <body>
   <header class="client-header waiter-header" id="waiter-header">
@@ -29,20 +29,9 @@
     </div>
   </header>
 
-  <main class="container waiter-container">
-    <section class="waiter-hero card">
-      <div>
-        <p class="eyebrow">Atendimento presencial</p>
-        <h2>Registre o pedido do cliente.</h2>
-        <p>Escolha a mesa, informe o nome da pessoa e adicione os produtos. O pedido cairá na mesma conta que aparece no QR Code.</p>
-      </div>
-      <div class="waiter-hero-icon">▤</div>
-    </section>
-
-    <section id="setup-service" class="card waiter-setup">
+  <main class="container waiter-container">    <section id="setup-service" class="card waiter-setup">
       <div class="waiter-setup-heading">
         <div>
-          <p class="eyebrow">Novo atendimento</p>
           <h2>Cliente e mesa</h2>
           <p class="muted">Se a mesa já tiver uma conta aberta, o pedido será incluído nela automaticamente.</p>
         </div>
@@ -87,15 +76,7 @@
       </div>
     </section>
 
-    <section id="catalog-area" class="hidden page-enter">
-      <div class="catalog-header">
-        <div>
-          <p class="eyebrow">Cardápio completo</p>
-          <h2>Escolha os produtos</h2>
-        </div>
-      </div>
-
-      <div class="toolbar">
+    <section id="catalog-area" class="hidden page-enter">      <div class="toolbar">
         <div class="search-wrap">
           <input id="search" placeholder="Buscar cerveja, porção, espetinho..." aria-label="Buscar produto">
         </div>
@@ -122,7 +103,7 @@
   <div id="cart-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="cart-title">
     <section class="modal card">
       <div class="row-between">
-        <div><p class="eyebrow">Pedido presencial</p><h2 id="cart-title">Carrinho</h2></div>
+        <div><h2 id="cart-title">Carrinho</h2></div>
         <button data-close-modal class="btn btn-secondary btn-icon" type="button" aria-label="Fechar">×</button>
       </div>
 
@@ -151,13 +132,13 @@
   <div id="orders-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
     <section class="modal card">
       <div class="row-between">
-        <div><p class="eyebrow">Conta compartilhada</p><h2>Pedidos da mesa</h2></div>
+        <div><h2>Pedidos da mesa</h2></div>
         <button data-close-modal class="btn btn-secondary btn-icon" type="button" aria-label="Fechar">×</button>
       </div>
       <div id="table-orders-list" class="status-list"></div>
     </section>
   </div>
 
-  <script type="module" src="../js/atendente/app.js?v=7"></script>
+  <script type="module" src="../js/atendente/app.js?v=8"></script>
 </body>
 </html>

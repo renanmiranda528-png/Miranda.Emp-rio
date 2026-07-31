@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#09090a">
   <title>Central de Pedidos | Miranda</title>
   <link rel="icon" href="../assets/img/logo-miranda.webp">
-  <link rel="stylesheet" href="../css/global.css?v=7">
-  <link rel="stylesheet" href="../css/admin.css?v=7">
+  <link rel="stylesheet" href="../css/global.css?v=8">
+  <link rel="stylesheet" href="../css/admin.css?v=8">
 </head>
 <body>
   <div class="admin-shell">
@@ -44,7 +44,7 @@
       <header id="admin-header" class="admin-header">
         <div class="admin-title-wrap">
           <button id="menu-mobile" class="btn btn-secondary btn-icon mobile-menu-button" type="button" aria-label="Abrir menu">☰</button>
-          <div><p class="eyebrow">Operação</p><h1 id="titulo-pagina">Pedidos</h1></div>
+          <div><h1 id="titulo-pagina">Pedidos</h1></div>
         </div>
         <div class="header-actions">
           <span id="conexao" class="status-pill">Conectando</span>
@@ -65,7 +65,7 @@
   </div>
 
   <script type="module">
-    import("../js/admin/app.js?v=7").catch((erro) => {
+    import("../js/admin/app.js?v=8").catch((erro) => {
       console.error("Erro ao carregar a Central:", erro);
       document.querySelector("#conexao").textContent = "Erro ao carregar";
       document.querySelector("#conteudo").innerHTML = `<section class="notice error"><strong>A Central não conseguiu carregar.</strong><br>${String(erro?.message || erro)}</section>`;

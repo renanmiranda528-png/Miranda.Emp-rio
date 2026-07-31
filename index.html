@@ -7,8 +7,8 @@
   <meta name="description" content="Cardápio digital da Miranda Empório de Bebidas">
   <title>Miranda Empório de Bebidas</title>
   <link rel="icon" href="./assets/img/logo-miranda.webp">
-  <link rel="stylesheet" href="./css/global.css?v=7">
-  <link rel="stylesheet" href="./css/cliente.css?v=7">
+  <link rel="stylesheet" href="./css/global.css?v=8">
+  <link rel="stylesheet" href="./css/cliente.css?v=8">
 </head>
 <body>
 <header class="client-header" id="client-header">
@@ -25,18 +25,6 @@
 </header>
 
 <main class="container">
-  <section class="hero card">
-    <div class="hero-content">
-      <p class="eyebrow">Cardápio digital</p>
-      <h2>Seu pedido direto da mesa.</h2>
-      <p id="mensagem-hero">Bebidas, espetinhos e porções. Peça quantas vezes quiser e pague somente ao fechar a conta no caixa.</p>
-      <div class="hero-features">
-        <span>✓ Sem login</span>
-        <span>✓ Pedido direto na mesa</span>
-        <span>✓ Conta sempre atualizada</span>
-      </div>
-    </div>
-  </section>
 
   <section id="setup-alert" class="notice hidden"></section>
 
@@ -45,7 +33,6 @@
       <div class="account-summary">
         <div class="account-icon">⌁</div>
         <div>
-          <p class="eyebrow">Sua mesa</p>
           <h3 id="titulo-conta">Identificando a conta...</h3>
           <p id="texto-conta" class="muted">Aguarde alguns instantes.</p>
         </div>
@@ -63,7 +50,6 @@
   <section id="area-cardapio" class="hidden page-enter">
     <div class="catalog-header">
       <div>
-        <p class="eyebrow">Escolha seus produtos</p>
         <h2>Cardápio</h2>
       </div>
       <div class="catalog-actions">
@@ -96,7 +82,7 @@
 <div id="modal-carrinho" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="titulo-carrinho">
   <section class="modal card">
     <div class="row-between">
-      <div><p class="eyebrow">Seu pedido</p><h2 id="titulo-carrinho">Carrinho</h2></div>
+      <div><h2 id="titulo-carrinho">Carrinho</h2></div>
       <button data-fechar class="btn btn-secondary btn-icon" type="button" aria-label="Fechar">×</button>
     </div>
     <div id="itens-carrinho" class="cart-items"></div>
@@ -112,13 +98,13 @@
 <div id="modal-pedidos" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="titulo-pedidos">
   <section class="modal card">
     <div class="row-between">
-      <div><p class="eyebrow">Conta da mesa</p><h2 id="titulo-pedidos">Pedidos da mesa</h2></div>
+      <div><h2 id="titulo-pedidos">Pedidos da mesa</h2></div>
       <button data-fechar class="btn btn-secondary btn-icon" type="button" aria-label="Fechar">×</button>
     </div>
     <div id="lista-meus-pedidos" class="status-list"></div>
   </section>
 </div>
 
-<script type="module" src="./js/cliente/app.js?v=7"></script>
+<script type="module" src="./js/cliente/app.js?v=8"></script>
 </body>
 </html>

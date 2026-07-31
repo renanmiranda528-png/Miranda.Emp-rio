@@ -131,6 +131,26 @@ input, select, textarea {
   transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
 textarea { min-height: 100px; resize: vertical; }
+
+/* V8 — correção de contraste dos menus de seleção no Windows/Chrome */
+select {
+  color: var(--text);
+  background-color: var(--surface-2);
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  color: #fffdf8 !important;
+  background-color: #1b1b1f !important;
+}
+select option:checked {
+  color: #ffffff !important;
+  background-color: #8c0c14 !important;
+}
+select:disabled {
+  color: #9a989f;
+  background-color: #202024;
+}
 input::placeholder, textarea::placeholder { color: #85838a; }
 input:focus, select:focus, textarea:focus {
   border-color: rgba(243,183,31,.7);
