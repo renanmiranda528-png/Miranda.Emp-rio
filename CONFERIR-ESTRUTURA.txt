@@ -18,3 +18,12 @@ admin/login.html
 
 Não envie o arquivo ZIP diretamente ao GitHub.
 Extraia o ZIP e envie TODO o conteúdo de dentro da pasta Miranda.Emp-rio.
+
+NOVO NA V7:
+atendente/
+  index.html
+  login.html
+js/atendente/
+  app.js
+  login.js
+css/atendente.css

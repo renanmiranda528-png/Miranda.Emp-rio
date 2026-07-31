@@ -1,6 +1,6 @@
-import { auth, db, firebaseConfigurado } from "../shared/firebase-client.js?v=6";
-import { dinheiro, gerarId, limparTexto, escapar, dataHora, debounce } from "../shared/utils.js?v=6";
-import { toast, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=6";
+import { auth, db, firebaseConfigurado } from "../shared/firebase-client.js?v=7";
+import { dinheiro, gerarId, limparTexto, escapar, dataHora, debounce } from "../shared/utils.js?v=7";
+import { toast, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=7";
 import {
   signInAnonymously,
   onAuthStateChanged

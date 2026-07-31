@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#09090a">
   <title>Central de Pedidos | Miranda</title>
   <link rel="icon" href="../assets/img/logo-miranda.webp">
-  <link rel="stylesheet" href="../css/global.css?v=6">
-  <link rel="stylesheet" href="../css/admin.css?v=6">
+  <link rel="stylesheet" href="../css/global.css?v=7">
+  <link rel="stylesheet" href="../css/admin.css?v=7">
 </head>
 <body>
   <div class="admin-shell">
@@ -25,6 +25,7 @@
       <nav>
         <a href="#" class="active" data-tab="pedidos"><span class="nav-icon">▦</span>Pedidos</a>
         <a href="#" data-tab="mesas"><span class="nav-icon">◎</span>Mesas e contas</a>
+        <a href="../atendente/index.html"><span class="nav-icon">◈</span>Cardápio do atendente</a>
         <a href="#" data-tab="cardapio"><span class="nav-icon">▤</span>Cardápio</a>
         <a href="#" data-tab="historico"><span class="nav-icon">◷</span>Histórico</a>
         <a href="#" data-tab="relatorio"><span class="nav-icon">▥</span>Relatórios</a>
@@ -64,7 +65,7 @@
   </div>
 
   <script type="module">
-    import("../js/admin/app.js?v=6").catch((erro) => {
+    import("../js/admin/app.js?v=7").catch((erro) => {
       console.error("Erro ao carregar a Central:", erro);
       document.querySelector("#conexao").textContent = "Erro ao carregar";
       document.querySelector("#conteudo").innerHTML = `<section class="notice error"><strong>A Central não conseguiu carregar.</strong><br>${String(erro?.message || erro)}</section>`;

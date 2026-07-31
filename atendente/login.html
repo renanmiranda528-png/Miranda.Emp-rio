@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09090a">
+  <meta name="description" content="Acesso dos atendentes da Miranda Empório de Bebidas">
+  <title>Atendente | Miranda Empório de Bebidas</title>
+  <link rel="icon" href="../assets/img/logo-miranda.webp">
+  <link rel="stylesheet" href="../css/global.css?v=7">
+  <link rel="stylesheet" href="../css/atendente.css?v=7">
+</head>
+<body class="waiter-login-page">
+  <main class="waiter-login-shell">
+    <section class="waiter-login-brand">
+      <img src="../assets/img/logo-miranda.webp" alt="Logo Miranda Empório de Bebidas">
+      <p class="eyebrow">Miranda</p>
+      <h1>Cardápio do atendente</h1>
+      <p>Registre pedidos presenciais no mesmo sistema usado pelos QR Codes das mesas.</p>
+      <div class="waiter-login-features">
+        <span>✓ Pedido direto na mesa</span>
+        <span>✓ Impressão automática</span>
+        <span>✓ Conta compartilhada com o cliente</span>
+      </div>
+    </section>
+
+    <section class="waiter-login-card card">
+      <p class="eyebrow">Acesso da equipe</p>
+      <h2>Entrar</h2>
+      <p class="muted">Use a conta de administrador, caixa ou atendimento cadastrada no Firebase.</p>
+
+      <div id="setup-alert" class="notice hidden"></div>
+
+      <form id="login-form" class="form-grid">
+        <label>
+          E-mail
+          <input id="email" type="email" autocomplete="username" required>
+        </label>
+        <label>
+          Senha
+          <input id="senha" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn btn-primary" type="submit">Entrar no cardápio</button>
+        <p id="erro" class="error"></p>
+      </form>
+
+      <a class="waiter-back-link" href="../admin/login.html">Ir para a Central Administrativa</a>
+    </section>
+  </main>
+
+  <script type="module" src="../js/atendente/login.js?v=7"></script>
+</body>
+</html>

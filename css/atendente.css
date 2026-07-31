@@ -1,0 +1,311 @@
+.waiter-login-page {
+  min-height: 100vh;
+  padding: 26px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(168,15,24,.20), transparent 33%),
+    radial-gradient(circle at 85% 80%, rgba(243,183,31,.09), transparent 30%),
+    var(--bg);
+}
+.waiter-login-shell {
+  width: min(1060px, 100%);
+  display: grid;
+  grid-template-columns: 1.05fr .85fr;
+  gap: 22px;
+  align-items: stretch;
+}
+.waiter-login-brand,
+.waiter-login-card {
+  padding: clamp(26px, 5vw, 48px);
+  border-radius: var(--radius-lg);
+}
+.waiter-login-brand {
+  position: relative;
+  overflow: hidden;
+  min-height: 570px;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  border: 1px solid rgba(255,255,255,.08);
+  background:
+    linear-gradient(150deg, rgba(121,5,13,.88), rgba(26,8,11,.93)),
+    url("../assets/img/logo-miranda.webp") center 20% / 58% auto no-repeat;
+  box-shadow: var(--shadow);
+}
+.waiter-login-brand::after {
+  content: "";
+  position: absolute;
+  inset: -20% -30% auto auto;
+  width: 350px;
+  height: 350px;
+  border: 85px solid rgba(243,183,31,.055);
+  border-radius: 50%;
+}
+.waiter-login-brand > img {
+  width: 86px;
+  height: 86px;
+  margin-bottom: auto;
+  border-radius: 20px;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,.14);
+}
+.waiter-login-brand h1 {
+  margin-bottom: 14px;
+  font-size: clamp(2.3rem, 5vw, 4.7rem);
+  line-height: .95;
+  letter-spacing: -.055em;
+}
+.waiter-login-brand > p:not(.eyebrow) {
+  max-width: 560px;
+  color: rgba(255,255,255,.8);
+  line-height: 1.6;
+}
+.waiter-login-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 20px;
+}
+.waiter-login-features span {
+  padding: 8px 11px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 999px;
+  background: rgba(255,255,255,.055);
+  font-size: .82rem;
+  font-weight: 760;
+}
+.waiter-login-card {
+  align-self: center;
+}
+.waiter-login-card h2 {
+  font-size: 2rem;
+}
+.waiter-back-link {
+  display: inline-block;
+  margin-top: 20px;
+  color: var(--muted);
+  font-size: .88rem;
+}
+.waiter-back-link:hover {
+  color: #fff;
+}
+
+.waiter-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.waiter-container {
+  padding-top: 18px;
+}
+.waiter-hero {
+  min-height: 245px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 26px;
+  padding: clamp(26px, 5vw, 50px);
+  margin-bottom: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(120deg, rgba(128,7,15,.95), rgba(33,8,11,.95)),
+    url("../assets/img/logo-miranda.webp") right center / 34% auto no-repeat;
+}
+.waiter-hero h2 {
+  margin-bottom: 12px;
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  line-height: .98;
+  letter-spacing: -.045em;
+}
+.waiter-hero p {
+  max-width: 680px;
+  color: rgba(255,255,255,.8);
+  line-height: 1.6;
+}
+.waiter-hero-icon {
+  width: 100px;
+  height: 100px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 28px;
+  background: rgba(255,255,255,.055);
+  color: var(--gold);
+  font-size: 3rem;
+}
+.waiter-setup {
+  padding: 22px;
+  margin-bottom: 18px;
+}
+.waiter-setup-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.waiter-setup-heading h2 {
+  margin-bottom: 6px;
+}
+.waiter-service-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 13px;
+  align-items: end;
+}
+.waiter-service-form .btn {
+  min-height: 47px;
+}
+.waiter-table-preview {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: rgba(255,255,255,.03);
+  color: var(--muted);
+}
+.waiter-table-preview strong {
+  color: #fff;
+}
+.waiter-active-service {
+  position: sticky;
+  top: 86px;
+  z-index: 35;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
+  margin-bottom: 18px;
+  border-color: rgba(243,183,31,.30);
+  background: rgba(20,20,22,.93);
+  backdrop-filter: blur(16px);
+}
+.waiter-service-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.waiter-context-item {
+  min-width: 145px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+}
+.waiter-context-item small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+}
+.waiter-context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+.waiter-cart-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.waiter-cart-context span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(243,183,31,.10);
+  color: #ffe59a;
+  font-size: .82rem;
+  font-weight: 760;
+}
+
+@media (max-width: 850px) {
+  .waiter-login-shell {
+    grid-template-columns: 1fr;
+  }
+  .waiter-login-brand {
+    min-height: 430px;
+  }
+  .waiter-service-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .waiter-service-form .btn {
+    grid-column: 1 / -1;
+  }
+  .waiter-active-service {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .waiter-context-actions {
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 600px) {
+  .waiter-login-page {
+    padding: 12px;
+  }
+  .waiter-login-brand {
+    min-height: 350px;
+    padding: 24px;
+    background-size: 75% auto;
+  }
+  .waiter-login-brand > img {
+    width: 66px;
+    height: 66px;
+  }
+  .waiter-login-card {
+    padding: 22px;
+  }
+  .waiter-header-actions #staff-badge {
+    display: none;
+  }
+  .waiter-header-actions .btn {
+    min-height: 38px;
+    padding: 8px 11px;
+  }
+  .waiter-hero {
+    min-height: 270px;
+    padding: 25px 20px;
+    background-size: 72% auto;
+  }
+  .waiter-hero-icon {
+    display: none;
+  }
+  .waiter-setup-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .waiter-setup-heading .btn {
+    width: 100%;
+  }
+  .waiter-service-form {
+    grid-template-columns: 1fr;
+  }
+  .waiter-service-form .btn {
+    grid-column: auto;
+  }
+  .waiter-active-service {
+    top: 72px;
+  }
+  .waiter-service-context {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .waiter-context-item:first-child {
+    grid-column: 1 / -1;
+  }
+  .waiter-context-item {
+    min-width: 0;
+  }
+  .waiter-context-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+  .waiter-context-actions .btn {
+    width: 100%;
+  }
+}

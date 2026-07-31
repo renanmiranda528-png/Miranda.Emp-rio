@@ -31,6 +31,43 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ["administrador", "caixa", "atendimento"];
     }
 
+    function activeTable(tableToken) {
+      return exists(/databases/$(database)/documents/mesas/$(tableToken))
+        && get(/databases/$(database)/documents/mesas/$(tableToken)).data.ativa == true;
+    }
+
+    function validAccountData(tableToken, accountData) {
+      return accountData.mesaToken == tableToken
+        && accountData.status == "aberta"
+        && accountData.responsavel is string
+        && accountData.responsavel.size() >= 2
+        && accountData.sessaoId is string
+        && activeTable(tableToken)
+        && accountData.mesaNumero == get(/databases/$(database)/documents/mesas/$(tableToken)).data.numero;
+    }
+
+    function activeAccountMatches(orderData) {
+      return exists(/databases/$(database)/documents/contas_ativas/$(orderData.mesaToken))
+        && get(/databases/$(database)/documents/contas_ativas/$(orderData.mesaToken)).data.sessaoId == orderData.sessaoId
+        && get(/databases/$(database)/documents/contas_ativas/$(orderData.mesaToken)).data.mesaNumero == orderData.mesaNumero
+        && get(/databases/$(database)/documents/contas_ativas/$(orderData.mesaToken)).data.responsavel == orderData.responsavelConta;
+    }
+
+    function validOrderData(orderData) {
+      return orderData.status == "novo"
+        && orderData.statusImpressao == "pendente"
+        && orderData.mesaToken is string
+        && orderData.sessaoId is string
+        && orderData.solicitadoPor is string
+        && orderData.solicitadoPor.size() >= 2
+        && orderData.itens is list
+        && orderData.itens.size() > 0
+        && orderData.itens.size() <= 50
+        && orderData.total is number
+        && orderData.total >= 0
+        && activeAccountMatches(orderData);
+    }
+
     function sameActiveTableSession(orderData) {
       return logged()
         && exists(/databases/$(database)/documents/contas_ativas/$(orderData.mesaToken))
@@ -56,8 +93,6 @@ service cloud.firestore {
     }
 
     match /produtos/{productId} {
-      // Um produto com ativo=true pode ser lido mesmo quando disponivel=false.
-      // Assim ele continua no cardápio com o selo ESGOTADO.
       allow get: if resource.data.ativo == true || staff();
       allow list: if staff() || resource.data.ativo == true;
       allow create, update, delete: if admin();
@@ -73,46 +108,44 @@ service cloud.firestore {
       allow get: if logged();
       allow list: if staff();
 
-      allow create: if logged()
-        && !staff()
-        && request.resource.data.mesaToken == tableToken
-        && request.resource.data.status == "aberta"
-        && request.resource.data.responsavelUid == request.auth.uid
-        && request.resource.data.responsavel is string
-        && request.resource.data.responsavel.size() >= 2
-        && request.resource.data.sessaoId is string
-        && exists(/databases/$(database)/documents/mesas/$(tableToken))
-        && get(/databases/$(database)/documents/mesas/$(tableToken)).data.ativa == true
-        && request.resource.data.mesaNumero == get(/databases/$(database)/documents/mesas/$(tableToken)).data.numero;
+      allow create: if validAccountData(tableToken, request.resource.data)
+        && (
+          (
+            logged()
+            && !staff()
+            && request.resource.data.responsavelUid == request.auth.uid
+          )
+          ||
+          (
+            serviceStaff()
+            && request.resource.data.responsavelUid == request.auth.uid
+            && request.resource.data.abertaPorTipo == "atendente"
+            && request.resource.data.abertaPorUid == request.auth.uid
+          )
+        );
 
       allow update, delete: if cashier();
     }
 
     match /pedidos/{orderId} {
-      allow create: if logged()
-        && !staff()
-        && request.resource.data.clienteUid == request.auth.uid
-        && request.resource.data.status == "novo"
-        && request.resource.data.statusImpressao == "pendente"
-        && request.resource.data.mesaToken is string
-        && request.resource.data.sessaoId is string
-        && request.resource.data.solicitadoPor is string
-        && request.resource.data.solicitadoPor.size() >= 2
-        && request.resource.data.itens is list
-        && request.resource.data.itens.size() > 0
-        && request.resource.data.itens.size() <= 50
-        && request.resource.data.total is number
-        && request.resource.data.total >= 0
-        && exists(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken))
-        && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.sessaoId == request.resource.data.sessaoId
-        && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.mesaNumero == request.resource.data.mesaNumero
-        && get(/databases/$(database)/documents/contas_ativas/$(request.resource.data.mesaToken)).data.responsavel == request.resource.data.responsavelConta;
+      allow create: if validOrderData(request.resource.data)
+        && (
+          (
+            logged()
+            && !staff()
+            && request.resource.data.clienteUid == request.auth.uid
+          )
+          ||
+          (
+            serviceStaff()
+            && request.resource.data.clienteUid == request.auth.uid
+            && request.resource.data.origemPedido == "atendente"
+            && request.resource.data.atendenteUid == request.auth.uid
+          )
+        );
 
-      // Qualquer celular ligado à sessão ativa da mesa pode ver todos os pedidos dessa conta.
       allow read: if staff() || sameActiveTableSession(resource.data);
 
-      // Funcionários gerenciam normalmente. O cliente só pode marcar como entregue,
-      // sem alterar valores, itens, mesa ou qualquer outro campo.
       allow update: if serviceStaff()
         || (
           logged()
@@ -128,6 +161,7 @@ service cloud.firestore {
             "atualizadoEm"
           ])
         );
+
       allow delete: if admin();
     }
 

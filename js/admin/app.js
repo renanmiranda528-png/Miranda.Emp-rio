@@ -1,6 +1,6 @@
-import { auth, db } from "../shared/firebase.js?v=6";
-import { dinheiro, dataHora, escapar, limparTexto, gerarId, debounce } from "../shared/utils.js?v=6";
-import { toast, confirmar, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=6";
+import { auth, db } from "../shared/firebase.js?v=7";
+import { dinheiro, dataHora, escapar, limparTexto, gerarId, debounce } from "../shared/utils.js?v=7";
+import { toast, confirmar, setButtonLoading, formatFirebaseError } from "../shared/ui.js?v=7";
 import {
   onAuthStateChanged,
   signOut

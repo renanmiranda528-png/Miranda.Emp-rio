@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#09090a">
+  <meta name="description" content="Cardápio da equipe de atendimento da Miranda Empório de Bebidas">
+  <title>Cardápio do Atendente | Miranda</title>
+  <link rel="icon" href="../assets/img/logo-miranda.webp">
+  <link rel="stylesheet" href="../css/global.css?v=7">
+  <link rel="stylesheet" href="../css/cliente.css?v=7">
+  <link rel="stylesheet" href="../css/atendente.css?v=7">
+</head>
+<body>
+  <header class="client-header waiter-header" id="waiter-header">
+    <div class="topbar">
+      <a class="brand" href="./index.html" aria-label="Cardápio do atendente">
+        <img class="brand-logo" src="../assets/img/logo-miranda.webp" alt="Logo Miranda Empório de Bebidas">
+        <div class="brand-copy">
+          <p class="eyebrow">Miranda</p>
+          <h1>Modo atendente</h1>
+        </div>
+      </a>
+
+      <div class="waiter-header-actions">
+        <span id="staff-badge" class="status-pill">Validando acesso</span>
+        <button id="logout-button" class="btn btn-secondary btn-sm" type="button">Sair</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container waiter-container">
+    <section class="waiter-hero card">
+      <div>
+        <p class="eyebrow">Atendimento presencial</p>
+        <h2>Registre o pedido do cliente.</h2>
+        <p>Escolha a mesa, informe o nome da pessoa e adicione os produtos. O pedido cairá na mesma conta que aparece no QR Code.</p>
+      </div>
+      <div class="waiter-hero-icon">▤</div>
+    </section>
+
+    <section id="setup-service" class="card waiter-setup">
+      <div class="waiter-setup-heading">
+        <div>
+          <p class="eyebrow">Novo atendimento</p>
+          <h2>Cliente e mesa</h2>
+          <p class="muted">Se a mesa já tiver uma conta aberta, o pedido será incluído nela automaticamente.</p>
+        </div>
+        <button id="refresh-tables" class="btn btn-secondary" type="button">Atualizar mesas</button>
+      </div>
+
+      <form id="service-form" class="waiter-service-form">
+        <label>
+          Nome do cliente
+          <input id="customer-name" maxlength="40" autocomplete="off" placeholder="Ex.: Renan" required>
+        </label>
+        <label>
+          Mesa
+          <select id="table-select" required>
+            <option value="">Carregando mesas...</option>
+          </select>
+        </label>
+        <button id="start-service-button" class="btn btn-primary" type="submit">Abrir cardápio</button>
+      </form>
+
+      <div id="selected-table-preview" class="waiter-table-preview hidden"></div>
+    </section>
+
+    <section id="active-service" class="waiter-active-service card hidden">
+      <div class="waiter-service-context">
+        <div class="waiter-context-item">
+          <small>Cliente atendido</small>
+          <strong id="active-customer">—</strong>
+        </div>
+        <div class="waiter-context-item">
+          <small>Mesa</small>
+          <strong id="active-table">—</strong>
+        </div>
+        <div class="waiter-context-item">
+          <small>Conta principal</small>
+          <strong id="active-account">—</strong>
+        </div>
+      </div>
+      <div class="waiter-context-actions">
+        <button id="table-orders-button" class="btn btn-secondary" type="button">Pedidos da mesa</button>
+        <button id="change-service-button" class="btn btn-secondary" type="button">Trocar atendimento</button>
+      </div>
+    </section>
+
+    <section id="catalog-area" class="hidden page-enter">
+      <div class="catalog-header">
+        <div>
+          <p class="eyebrow">Cardápio completo</p>
+          <h2>Escolha os produtos</h2>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-wrap">
+          <input id="search" placeholder="Buscar cerveja, porção, espetinho..." aria-label="Buscar produto">
+        </div>
+        <button id="clear-search" class="btn btn-secondary hidden" type="button">Limpar busca</button>
+      </div>
+
+      <div id="categories" class="categories" aria-label="Categorias"></div>
+
+      <div id="catalog-loading" class="catalog-skeleton" aria-label="Carregando cardápio">
+        <article class="product-skeleton card skeleton"><div class="sk-img"></div><div class="sk-body"><div class="skeleton-line wide"></div><div class="skeleton-line medium"></div><div class="skeleton-line short"></div></div></article>
+        <article class="product-skeleton card skeleton"><div class="sk-img"></div><div class="sk-body"><div class="skeleton-line wide"></div><div class="skeleton-line medium"></div><div class="skeleton-line short"></div></div></article>
+        <article class="product-skeleton card skeleton"><div class="sk-img"></div><div class="sk-body"><div class="skeleton-line wide"></div><div class="skeleton-line medium"></div><div class="skeleton-line short"></div></div></article>
+        <article class="product-skeleton card skeleton"><div class="sk-img"></div><div class="sk-body"><div class="skeleton-line wide"></div><div class="skeleton-line medium"></div><div class="skeleton-line short"></div></div></article>
+      </div>
+
+      <div id="products" class="products hidden"></div>
+    </section>
+  </main>
+
+  <button id="open-cart" class="btn btn-primary cart-fab hidden" type="button">
+    <span>Revisar pedido</span><span id="cart-count" class="cart-count">0</span>
+  </button>
+
+  <div id="cart-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+    <section class="modal card">
+      <div class="row-between">
+        <div><p class="eyebrow">Pedido presencial</p><h2 id="cart-title">Carrinho</h2></div>
+        <button data-close-modal class="btn btn-secondary btn-icon" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="waiter-cart-context">
+        <span id="cart-context-customer">Cliente: —</span>
+        <span id="cart-context-table">Mesa: —</span>
+      </div>
+
+      <div id="cart-items" class="cart-items"></div>
+
+      <label>
+        Observações do pedido
+        <textarea id="order-note" rows="3" maxlength="240" placeholder="Ex.: sem cebola, bebida bem gelada..."></textarea>
+      </label>
+
+      <div class="row-between cart-total">
+        <strong>Total do pedido</strong>
+        <strong id="cart-total">R$ 0,00</strong>
+      </div>
+
+      <button id="submit-order" class="btn btn-primary" type="button">Enviar pedido para a mesa</button>
+      <p id="order-error" class="error"></p>
+    </section>
+  </div>
+
+  <div id="orders-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <section class="modal card">
+      <div class="row-between">
+        <div><p class="eyebrow">Conta compartilhada</p><h2>Pedidos da mesa</h2></div>
+        <button data-close-modal class="btn btn-secondary btn-icon" type="button" aria-label="Fechar">×</button>
+      </div>
+      <div id="table-orders-list" class="status-list"></div>
+    </section>
+  </div>
+
+  <script type="module" src="../js/atendente/app.js?v=7"></script>
+</body>
+</html>
